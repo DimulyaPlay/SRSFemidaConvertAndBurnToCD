@@ -1,5 +1,8 @@
 import customtkinter
 from UI_settings_menu import Settings_menu
+from UI_search_menu import Search_menu
+from UI_courtrooms_menu import Courtrooms_menu
+from Utils import *
 
 
 class App(customtkinter.CTk):
@@ -17,11 +20,13 @@ class App(customtkinter.CTk):
         self.sqlite = sqlite
 
     def open_cr_menu(self):
-
+        self.withdraw()
+        Courtrooms_menu(self, self.sqlite)
         return
 
     def open_search_menu(self):
-
+        self.withdraw()
+        Search_menu(self, self.sqlite)
         return
 
     def open_settings(self):
