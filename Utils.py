@@ -3,7 +3,9 @@ import sys
 import pandas as pd
 from threading import Thread
 from time import sleep
-import pydub
+from pydub import AudioSegment
+import soundfile as sf
+import tempfile
 import clr
 from simplesqlite import SimpleSQLite
 from simplesqlite.query import Where
@@ -15,7 +17,7 @@ from CDBurnerModule import CDBurner
 # print(gg, type(gg))
 # CDBurner.BurnFiles(["C:\\Users\\CourtUser\\Downloads\\59RS0025-212-22-0000017_all_files.zip"], 0, True)
 sqlite = SimpleSQLite(current_path+'\\courtrooms.db')
-pydub.AudioSegment.converter = current_path+"\\ffmpeg.exe"
+AudioSegment.converter = current_path+"\\ffmpeg.exe"
 
 
 def wait_for_rom_ready():
@@ -184,4 +186,38 @@ def concat_audio_by_time(audio_filepaths):
     :return: dict{time:audiosegment}
     """
     audio_filepaths = [i for i in audio_filepaths if i.endswith('.WAV')]
-    print(audio_filepaths)
+    audio_filepaths_by_time = {}
+    tempfile_list_for_delete = []
+    for audio_path in audio_filepaths:
+        audio_time_suffix = os.path.basename(audio_path).split('.')[0].split(' ')[-1]
+        data, sr = sf.read(audio_path)
+
+        sig, sr = sf.read(audio_path)
+        fd, outpath = tempfile.mkstemp('.wav')
+        tempfile_list_for_delete.append(outpath)
+        os.close(fd)
+        sf.write(outpath, sig, sr, format="wav", subtype='PCM_16')
+
+        sound1 = AudioSegment.from_wav(outpath)
+        normalize_volume = False
+        if normalize_volume:
+            sound1 = set_to_target_level(sound1, -12.0)
+        if audio_time_suffix in audio_filepaths_by_time.keys():
+            audio_filepaths_by_time[audio_time_suffix].overlay(sound1)
+        else:
+            audio_filepaths_by_time[audio_time_suffix] = sound1
+    out_sound = None
+    for key, value in dict(sorted(audio_filepaths_by_time.items())).items():
+        if out_sound:
+            out_sound += value
+        else:
+            out_sound = value
+    out_sound.export(f'C:\\Залы\\export.mp3')
+    for tf in tempfile_list_for_delete:
+        os.unlink(tf)
+
+
+def set_to_target_level(sound, target_level):
+    difference = target_level - sound.dBFS
+    return sound.apply_gain(difference)
+
