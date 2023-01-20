@@ -1,5 +1,9 @@
+import glob
 import os
+import subprocess
 import sys
+
+import customtkinter
 import pandas as pd
 from threading import Thread
 from time import sleep
@@ -8,7 +12,8 @@ import soundfile as sf
 import tempfile
 import clr
 from simplesqlite import SimpleSQLite
-from simplesqlite.query import Where
+from simplesqlite.query import Where, QueryItem
+import tkinter as tk
 current_path = os.getcwd()
 clr.AddReference(current_path+'\\csburnermodule\\CDBurnerModule.dll')
 from CDBurnerModule import CDBurner
@@ -18,6 +23,7 @@ from CDBurnerModule import CDBurner
 # CDBurner.BurnFiles(["C:\\Users\\CourtUser\\Downloads\\59RS0025-212-22-0000017_all_files.zip"], 0, True)
 sqlite = SimpleSQLite(current_path+'\\courtrooms.db')
 AudioSegment.converter = current_path+"\\ffmpeg.exe"
+mp3player = current_path + '\\foobar2000\\foobar2000.exe'
 
 
 def wait_for_rom_ready():
@@ -30,6 +36,10 @@ def wait_for_rom_ready():
         sleep(1)
         status_media = CDBurner.IsDriveReady(0)
     return
+
+
+def open_mp3(mp3path):
+    subprocess.Popen(mp3player+' '+fr'"{mp3path}"', shell=False)
 
 
 def get_cr_table():
@@ -101,8 +111,12 @@ def add_cr_to_sql(cr_name,cr_path):
     sqlite.insert(table_name='Courtrooms', record = [cr_name, cr_path, ' ', ' '])
 
 
-def add_ch_to_sql(foldername, case, date, courtroomname, mp3_path):
-    sqlite.insert(table_name='Courthearings', record = [foldername, case, date, courtroomname, mp3_path, ' ', ' '])
+def add_ch_to_sql(foldername, case, date, courtroomname, mp3_path, mp3_duration):
+    sqlite.insert(table_name='Courthearings', record = [foldername, case, date, courtroomname, mp3_path, mp3_duration,' ', ' '])
+
+
+def edit_ch_sql(foldername, mp3_path, mp3_duration):
+    sqlite.update(table_name='Courthearings', set_query=f"mp3path = '{mp3_path}', mp3duration = '{mp3_duration}'", where=Where(key='foldername', value=foldername))
 
 
 def del_cr_from_sql(cr_name):
@@ -138,27 +152,38 @@ def gather_case_date_from_name(ch_name):
     """
     ch_name = ch_name.split(' from ')
     date = ch_name[1]
-    case = ch_name[0].split('Case ')[1]
+    case = ch_name[0].split('Case #')[1]
     return case, date
 
 
-def gather_from_courtroom(cr_name, convert_audio):
+def gather_from_courtroom(cr_name, settings):
     """
     gather new audio from one courtroom
-    :param cr_name:
-    :param convert_audio: bool is we need to convert to mp3
+    :param settings: parameters
+    :param cr_name: courtroomname
     :return:
     """
     names_and_paths = gather_new_names_and_paths_from_cr(cr_name)
+    mp3_root_path = settings['mp3_path']
+    convert_audio = bool(settings['audio_convert'])
     print('found', len(names_and_paths), 'records in', cr_name)
     for name, path in names_and_paths:
         case, date = gather_case_date_from_name(name)
         if convert_audio:
-            mp3_path = ''
+            try:
+                filepaths = glob.glob(path+r'\*\*')
+                mp3_path = mp3_root_path + '\\' + name + '.mp3'
+                duration = concat_audio_by_time(filepaths, mp3_path)
+            except Exception as e:
+                print('error on converting audio', name, e)
+                mp3_path = ''
+                duration = ''
+                pass
         else:
             mp3_path = ''
+            duration = ''
         try:
-            add_ch_to_sql(foldername = name, case = case, date = date, courtroomname = cr_name, mp3_path = mp3_path)
+            add_ch_to_sql(foldername = name, case = case, date = date, courtroomname = cr_name, mp3_path = mp3_path, mp3_duration = duration)
             print(case,date,'added to DB')
         except Exception as e:
             print('error on appending to DB', e)
@@ -171,24 +196,38 @@ def gather_all():
     :return:
     """
     cr_df = get_cr_table()
+    settings = get_settings_table()
     print('start gathering from', len(cr_df), 'courtrooms')
     for idx, row in cr_df.iterrows():
         print('gathering from', row['courtroomname'])
-        gather_from_courtroom(row['courtroomname'], False)
+        gather_from_courtroom(row['courtroomname'], settings)
         print('gathering from',row['courtroomname'], 'complete')
     print('gathering successfully completed')
 
 
-def concat_audio_by_time(audio_filepaths):
+def convert_to_mp3(ch_foldername, cr_name):
+    cr_folder = get_cr_dict_by_cr_name(cr_name)[0]['diskdirectory']
+    folder_to_convert = cr_folder + '\\' + ch_foldername
+    filepaths = glob.glob(folder_to_convert + r'\*\*')
+    mp3_path = get_settings_table()['mp3_path'] + '\\' + ch_foldername + '.mp3'
+    duration = concat_audio_by_time(filepaths, mp3_path)
+    edit_ch_sql(ch_foldername, mp3_path, duration)
+
+
+def concat_audio_by_time(audio_filepaths, outmp3, normalize_volume = False):
     """
     groupping filepaths by time (all channels into one file)
+    :param outmp3: file to save converted mp3
+    :param normalize_volume: normalize all volumes to value in Db
     :param audio_filepaths: glob from audiopath
     :return: dict{time:audiosegment}
     """
     audio_filepaths = [i for i in audio_filepaths if i.endswith('.WAV')]
     audio_filepaths_by_time = {}
     tempfile_list_for_delete = []
-    for audio_path in audio_filepaths:
+    num_paths = len(audio_filepaths)
+    for idx, audio_path in enumerate(audio_filepaths):
+        print('working on', os.path.basename(audio_path), idx+1,"of",num_paths)
         audio_time_suffix = os.path.basename(audio_path).split('.')[0].split(' ')[-1]
         data, sr = sf.read(audio_path)
 
@@ -197,27 +236,65 @@ def concat_audio_by_time(audio_filepaths):
         tempfile_list_for_delete.append(outpath)
         os.close(fd)
         sf.write(outpath, sig, sr, format="wav", subtype='PCM_16')
-
         sound1 = AudioSegment.from_wav(outpath)
-        normalize_volume = False
         if normalize_volume:
-            sound1 = set_to_target_level(sound1, -12.0)
+            print('normalizing to', normalize_volume, 'Db')
+            sound1 = set_to_target_level(sound1, normalize_volume)
         if audio_time_suffix in audio_filepaths_by_time.keys():
             audio_filepaths_by_time[audio_time_suffix].overlay(sound1)
         else:
             audio_filepaths_by_time[audio_time_suffix] = sound1
     out_sound = None
+    print('last combining')
     for key, value in dict(sorted(audio_filepaths_by_time.items())).items():
         if out_sound:
             out_sound += value
         else:
             out_sound = value
-    out_sound.export(f'C:\\Залы\\export.mp3')
+    duration = int(len(out_sound)/1000.0)
+    print('saving file with duration', duration)
+    out_sound.export(outmp3)
+    print('clearing temp')
     for tf in tempfile_list_for_delete:
         os.unlink(tf)
+    return duration
 
 
 def set_to_target_level(sound, target_level):
     difference = target_level - sound.dBFS
     return sound.apply_gain(difference)
 
+
+class ScrollbarFrame(tk.Frame):
+    """
+    Extends class tk.Frame to support a scrollable Frame
+    This class is independent from the widgets to be scrolled and
+    can be used to replace a standard tk.Frame
+    """
+    def __init__(self, parent, **kwargs):
+        tk.Frame.__init__(self, parent, **kwargs, background='gray15')
+
+        # The Scrollbar, layout to the right
+        vsb = customtkinter.CTkScrollbar(self, orientation="vertical", bg_color='gray15')
+        vsb.pack(side="right", fill="y")
+
+        # The Canvas which supports the Scrollbar Interface, layout to the left
+        self.canvas = tk.Canvas(self, highlightthickness=0, background='gray14')
+        self.canvas.pack(side="left", fill="both", expand=True)
+
+        # Bind the Scrollbar to the self.canvas Scrollbar Interface
+        self.canvas.configure(yscrollcommand=vsb.set)
+        vsb.configure(command=self.canvas.yview)
+
+        # The Frame to be scrolled, layout into the canvas
+        # All widgets to be scrolled have to use this Frame as parent
+        self.scrolled_frame = customtkinter.CTkFrame(self.canvas, bg_color='gray15', fg_color='gray15', border_width=0)
+        self.canvas.create_window((4, 4), window=self.scrolled_frame, anchor="nw")
+
+        # Configures the scrollregion of the Canvas dynamically
+        self.scrolled_frame.bind("<Configure>", self.on_configure)
+
+    def on_configure(self, event):
+        """Set the scroll region to encompass the scrolled frame"""
+        self.update()
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))

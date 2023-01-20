@@ -17,7 +17,6 @@ class Settings_menu(customtkinter.CTkToplevel):
         tabview.pack()
         self.courtrooms_table = get_cr_table()
         self.settings = get_settings_table()
-        print(self.settings)
         tabview.configure(width=780, height=490)
         crooms = tabview.add("ЗАЛЫ")  # add tab at the end
         schedule = tabview.add("РАСПИСАНИЕ")  # add tab at the end
@@ -26,7 +25,9 @@ class Settings_menu(customtkinter.CTkToplevel):
         Courtrooms settings START
         """
         add_croom_btn = customtkinter.CTkButton(crooms, text='Добавить зал', corner_radius=10, command=self.add_croom)
-        add_croom_btn.pack(anchor='w', padx=10)
+        add_croom_btn.place(x=10, y=10)
+        gather_now_btn = customtkinter.CTkButton(crooms, text='Запустить сборщик записей', corner_radius=10, command=gather_all)
+        gather_now_btn.place(x=160, y=10)
         if self.courtrooms_table.empty:
             customtkinter.CTkLabel(master = crooms,text='Залов пока нет, добавьте первый зал',font=('roboto', 20)).pack(anchor='n', pady = 10)
         else:
