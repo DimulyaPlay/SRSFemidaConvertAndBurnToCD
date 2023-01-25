@@ -8,13 +8,14 @@ class Courtrooms_menu(customtkinter.CTkToplevel):
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root = root
         self.sqlite = sqlite
-        self.geometry('800x600')
+        self.geometry('760x600')
         self.resizable(False,False)
         self.title("Залы")
         cr_table = get_cr_table()
         self.cr_list = list(cr_table.courtroomname)
-        self.create_cr_combobox()
         self.cases_to_burn = []
+        self.cached_tables = {}
+        self.create_cr_combobox()
 
     def create_cr_combobox(self):
 
@@ -24,59 +25,82 @@ class Courtrooms_menu(customtkinter.CTkToplevel):
             self.ch_frame_duration.destroy()
             self.create_ch_table(choice)
 
-        combobox = customtkinter.CTkOptionMenu(master=self,width=580,
+        combobox = customtkinter.CTkOptionMenu(master=self,width=560,
                                              values=self.cr_list,
                                              command=combobox_callback,font=('roboto', 16))
         combobox.grid(padx=10, pady=10, sticky='nw')
         combobox.set(self.cr_list[0])
+        customtkinter.CTkButton(master=self, text='НАЧАТЬ ЗАПИСЬ', corner_radius=10, command=self.write_to_disk, font=('roboto', 14)).place(x=600, y=10)
+        self.ch_frame_hat = customtkinter.CTkFrame(master=self, width=760, corner_radius=10, bg_color='transparent',fg_color='transparent')
+        self.ch_frame_hat.grid(padx=5, pady=0, sticky='nw')
+        self.ch_frame_hat_name = customtkinter.CTkFrame(master=self.ch_frame_hat, bg_color='transparent',
+                                                    width=250,
+                                                    corner_radius=10)
+        self.ch_frame_hat_name.grid(row=0, column=0, padx=5, pady=5, sticky='n')
+        self.ch_frame_hat_date = customtkinter.CTkFrame(master=self.ch_frame_hat, bg_color='transparent',
+                                                    width=90,
+                                                    corner_radius=10)
+        self.ch_frame_hat_date.grid(row=0, column=1,padx=5, pady=0, sticky='n')
+        self.ch_frame_hat_duration = customtkinter.CTkFrame(master=self.ch_frame_hat, bg_color='transparent',
+                                                    width=90,
+                                                    corner_radius=10)
+        self.ch_frame_hat_duration.grid(row=0, column=2, padx=5, pady=0, sticky='n')
+        self.ch_frame_hat_to_burn = customtkinter.CTkFrame(master=self.ch_frame_hat, bg_color='transparent',
+                                                    width=90,
+                                                    corner_radius=10)
+        self.ch_frame_hat_to_burn.grid(row=0, column=3, padx=5, pady=0, sticky='n')
+        customtkinter.CTkLabel(self.ch_frame_hat_name, text='ДЕЛО №', font=('roboto', 16), width=200).grid(sticky='n', padx = 5)
+        customtkinter.CTkLabel(self.ch_frame_hat_date, text='ДАТА', font=('roboto', 16), width=80).grid(sticky='n', padx = 5)
+        customtkinter.CTkLabel(self.ch_frame_hat_duration, text='ДЛИТ', font=('roboto', 16), width=80).grid(sticky='n', padx = 5)
+        self.count_to_burn_lb = customtkinter.CTkLabel(self.ch_frame_hat_to_burn, text = 'ВЫБРАНО ДЛЯ ЗАПИСИ: 0', font=('roboto', 16), width=80)
+        self.count_to_burn_lb.grid(sticky='n', padx = 5)
         self.create_ch_table(self.cr_list[0])
 
     def create_ch_table(self, courtroom):
 
-        def add_remove_to_list(mp3path):
+        def add_remove_to_list(btn, mp3path):
             if not mp3path == '':
                 if mp3path in self.cases_to_burn:
                     self.cases_to_burn.remove(mp3path)
+                    btn.configure(fg_color='#1F6AA5', hover_color='#14375e', text='ДОБАВИТЬ ДЛЯ ЗАПИСИ')
+                    self.count_to_burn_lb.configure(text = f'ВЫБРАНО ДЛЯ ЗАПИСИ: {len(self.cases_to_burn)}')
                 else:
                     self.cases_to_burn.append(mp3path)
-            print(self.cases_to_burn)
-
-        ch_table = get_ch_table_by_cr_name(courtroom)
-        sbf = ScrollbarFrame(self)
-        sbf.grid(row=1, column=0, sticky='nsew')
-        self.grid_rowconfigure(1, weight=1)
+                    btn.configure(fg_color='red', hover_color='darkred', text=' В СПИСКЕ ДЛЯ ЗАПИСИ ')
+                    self.count_to_burn_lb.configure(text=f'ВЫБРАНО ДЛЯ ЗАПИСИ: {len(self.cases_to_burn)}')
+        if courtroom in self.cached_tables.keys():
+            ch_table = self.cached_tables[courtroom]
+        else:
+            ch_table = get_ch_table_by_cr_name(courtroom)
+            self.cached_tables[courtroom] = ch_table
+        sbf = VerticalScrolledFrame(self)
+        sbf.grid(row=2, column=0, sticky='nsew', padx=5)
+        self.grid_rowconfigure(2, weight=1)
         self.grid_columnconfigure(0, weight=1)
-        frame = sbf.scrolled_frame
-        customtkinter.CTkLabel(frame, text='ДЕЛО №', font=('roboto', 16)).grid(column=0, row=0)
-        customtkinter.CTkLabel(frame, text='ДАТА', font=('roboto', 16)).grid(column=1, row=0)
-        customtkinter.CTkLabel(frame, text='ДЛИТ', font=('roboto', 16)).grid(column=2, row=0)
+        frame = sbf
         self.ch_frame_case = customtkinter.CTkFrame(master=frame,
-                                       width=250, height=500,
-                                       corner_radius=10)
-        self.ch_frame_case.grid(column=0, row=1, sticky='n', padx = 5, pady = 5)
-        self.ch_frame_case.grid_propagate(0)
+                                       width=210,
+                                       corner_radius=10, bg_color='gray14')
+        self.ch_frame_case.grid(column=0, row=2, sticky='nw', padx = 5, pady = 5)
         self.ch_frame_date = customtkinter.CTkFrame(master=frame,
-                                       width=90, height=500,
-                                       corner_radius=10)
-        self.ch_frame_date.grid(column=1, row=1, sticky='n', padx = 5, pady = 5)
-        self.ch_frame_date.grid_propagate(0)
+                                       width=90,
+                                       corner_radius=10, bg_color='gray14')
+        self.ch_frame_date.grid(column=1, row=2, sticky='n', padx = 5, pady = 5)
         self.ch_frame_duration = customtkinter.CTkFrame(master=frame,
-                                       width=90, height=500,
-                                       corner_radius=10)
-        self.ch_frame_duration.grid(column=2, row=1, sticky='n', padx = 5, pady = 5)
-        self.ch_frame_duration.grid_propagate(0)
+                                       width=90,
+                                       corner_radius=10, bg_color='gray14')
+        self.ch_frame_duration.grid(column=2, row=2, sticky='n', padx = 5, pady = 5)
         self.ch_frame_buttons = customtkinter.CTkFrame(master=frame,
-                                       width=310, height=500,
-                                       corner_radius=10)
-        self.ch_frame_buttons.grid(column=3, row=1, sticky='n', padx = 5, pady = 5)
-        self.ch_frame_buttons.grid_propagate(0)
+                                       width=310,
+                                       corner_radius=10, bg_color='gray14')
+        self.ch_frame_buttons.grid(column=3, row=2, sticky='n', padx = 5, pady = 5)
         for idx, row in ch_table.iterrows():
 
-            customtkinter.CTkLabel(self.ch_frame_case, text=row['case'].replace('$2F', '/'), font=('roboto', 14)).grid(padx = 5, pady = 5, column=0, row=idx, sticky = 'w')
-            customtkinter.CTkLabel(self.ch_frame_date, text=row['date'], font=('roboto', 14)).grid(padx = 10, pady = 5, column=1, row=idx, sticky = 'n')
+            customtkinter.CTkLabel(self.ch_frame_case, text=row['case'].replace('$2F', '/'), font=('roboto', 14), width=200).grid(padx = 5, pady = 5, column=0, row=idx, sticky = 'w')
+            customtkinter.CTkLabel(self.ch_frame_date, text=row['date'].strftime('%d-%m-%Y'), font=('roboto', 14), width=80).grid(padx = 5, pady = 5, column=1, row=idx, sticky = 'n')
             if row["mp3duration"] != '':
                 duration_text = f'{int(int(row["mp3duration"])/60)} мин'
-                customtkinter.CTkLabel(self.ch_frame_duration, text=duration_text, font=('roboto', 14)).grid(padx=20,
+                customtkinter.CTkLabel(self.ch_frame_duration, text=duration_text, font=('roboto', 14), width=80).grid(padx=5,
                                                                                                              pady=5,
                                                                                                              column=2,
                                                                                                              row=idx,
@@ -88,9 +112,17 @@ class Courtrooms_menu(customtkinter.CTkToplevel):
                                         command=lambda e=row['foldername'], a=row['courtroomname']: convert_to_mp3(e, a)).grid(padx=5, pady=5, column=2,
                                                                                            row=idx, sticky='n')
                 state = 'disabled'
-            customtkinter.CTkButton(self.ch_frame_buttons, text='ПРОСЛУШАТЬ',width=50, font=('roboto', 14), state=state,
-                                    command=lambda e=row['mp3path']: open_mp3(e)).grid(padx=5, pady=5, column=0, row=idx, sticky='w')
-            customtkinter.CTkButton(self.ch_frame_buttons, text='ДОБАВИТЬ ДЛЯ ЗАПИСИ', font=('roboto', 14), state = state, command=lambda e=row['mp3path']:add_remove_to_list(e)).grid(padx = 5, pady = 5, column=1, row=idx, sticky = 'e')
+            btn_listen = customtkinter.CTkButton(self.ch_frame_buttons, text='ПРОСЛУШАТЬ',width=50, font=('roboto', 14), state=state,command=lambda e=row['mp3path']: open_mp3(e))
+            btn_listen.grid(padx=5, pady=5, column=0, row=idx, sticky='w')
+            btn_add_remove = customtkinter.CTkButton(self.ch_frame_buttons, text='ДОБАВИТЬ ДЛЯ ЗАПИСИ', font=('roboto', 14), state = state)
+            btn_add_remove.configure(command=lambda b=btn_add_remove, e=row['mp3path']:add_remove_to_list(b,e))
+            if row['mp3path'] in self.cases_to_burn:
+                btn_add_remove.configure(fg_color='red', hover_color='darkred', text=' В СПИСКЕ ДЛЯ ЗАПИСИ ')
+            btn_add_remove.grid(padx = 5, pady = 5, column=1, row=idx, sticky = 'e')
+
+    def write_to_disk(self):
+        print(self.cases_to_burn)
+        return
 
     def on_closing(self):
         self.root.deiconify()

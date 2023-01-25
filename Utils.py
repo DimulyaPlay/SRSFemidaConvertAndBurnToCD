@@ -86,7 +86,11 @@ def get_ch_table_by_cr_name(cr_name):
     :param cr_name: name of the courtroom
     :return: courthearings df from only one courtroom
     """
-    return pd.DataFrame(sqlite.select_as_dataframe(table_name="Courthearings", where=Where(key='courtroomname', value=cr_name)))
+    df = pd.DataFrame(sqlite.select_as_dataframe(table_name="Courthearings", where=Where(key='courtroomname', value=cr_name)))
+    df['date'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
+    df.sort_values('date', inplace=True, ascending=False)
+    df.reset_index(drop=True, inplace=True)
+    return df
 
 
 def update_settings_table(settings_dict):
@@ -265,36 +269,68 @@ def set_to_target_level(sound, target_level):
     return sound.apply_gain(difference)
 
 
-class ScrollbarFrame(tk.Frame):
+class VerticalScrolledFrame:
     """
-    Extends class tk.Frame to support a scrollable Frame
-    This class is independent from the widgets to be scrolled and
-    can be used to replace a standard tk.Frame
+    A vertically scrolled Frame that can be treated like any other Frame
+    ie it needs a master and layout and it can be a master.
+    :width:, :height:, :bg: are passed to the underlying Canvas
+    :bg: and all other keyword arguments are passed to the inner Frame
+    note that a widget layed out in this frame will have a self.master 3 layers deep,
+    (outer Frame, Canvas, inner Frame) so
+    if you subclass this there is no built in way for the children to access it.
+    You need to provide the controller separately.
     """
-    def __init__(self, parent, **kwargs):
-        tk.Frame.__init__(self, parent, **kwargs, background='gray15')
+    def __init__(self, master, **kwargs):
+        self.outer = customtkinter.CTkFrame(master, bg_color='transparent', fg_color='transparent')
 
-        # The Scrollbar, layout to the right
-        vsb = customtkinter.CTkScrollbar(self, orientation="vertical", bg_color='gray15')
-        vsb.pack(side="right", fill="y")
+        self.vsb = customtkinter.CTkScrollbar(self.outer, orientation=tk.VERTICAL, corner_radius=10)
+        self.vsb.pack(fill=tk.Y, side=tk.RIGHT)
+        self.canvas = tk.Canvas(self.outer, highlightthickness=0, background='gray14')
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.canvas['yscrollcommand'] = self.vsb.set
+        # mouse scroll does not seem to work with just "bind"; You have
+        # to use "bind_all". Therefore to use multiple windows you have
+        # to bind_all in the current widget
+        self.canvas.bind("<Enter>", self._bind_mouse)
+        self.canvas.bind("<Leave>", self._unbind_mouse)
+        self.vsb['command'] = self.canvas.yview
 
-        # The Canvas which supports the Scrollbar Interface, layout to the left
-        self.canvas = tk.Canvas(self, highlightthickness=0, background='gray14')
-        self.canvas.pack(side="left", fill="both", expand=True)
+        self.inner = customtkinter.CTkFrame(self.canvas, bg_color='transparent', fg_color='transparent')
+        # pack the inner Frame into the Canvas with the topleft corner 4 pixels offset
+        self.canvas.create_window(0, 0, window=self.inner, anchor='nw')
+        self.inner.bind("<Configure>", self._on_frame_configure)
 
-        # Bind the Scrollbar to the self.canvas Scrollbar Interface
-        self.canvas.configure(yscrollcommand=vsb.set)
-        vsb.configure(command=self.canvas.yview)
+        self.outer_attr = set(dir(tk.Widget))
 
-        # The Frame to be scrolled, layout into the canvas
-        # All widgets to be scrolled have to use this Frame as parent
-        self.scrolled_frame = customtkinter.CTkFrame(self.canvas, bg_color='gray15', fg_color='gray15', border_width=0)
-        self.canvas.create_window((4, 4), window=self.scrolled_frame, anchor="nw")
+    def __getattr__(self, item):
+        if item in self.outer_attr:
+            # geometry attributes etc (eg pack, destroy, tkraise) are passed on to self.outer
+            return getattr(self.outer, item)
+        else:
+            # all other attributes (_w, children, etc) are passed to self.inner
+            return getattr(self.inner, item)
 
-        # Configures the scrollregion of the Canvas dynamically
-        self.scrolled_frame.bind("<Configure>", self.on_configure)
+    def _on_frame_configure(self, event=None):
+        x1, y1, x2, y2 = self.canvas.bbox("all")
+        height = self.canvas.winfo_height()
+        self.canvas.config(scrollregion = (0,0, x2, max(y2, height)))
 
-    def on_configure(self, event):
-        """Set the scroll region to encompass the scrolled frame"""
-        self.update()
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+    def _bind_mouse(self, event=None):
+        self.canvas.bind_all("<4>", self._on_mousewheel)
+        self.canvas.bind_all("<5>", self._on_mousewheel)
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+    def _unbind_mouse(self, event=None):
+        self.canvas.unbind_all("<4>")
+        self.canvas.unbind_all("<5>")
+        self.canvas.unbind_all("<MouseWheel>")
+
+    def _on_mousewheel(self, event):
+        """Linux uses event.num; Windows / Mac uses event.delta"""
+        if event.num == 4 or event.delta > 0:
+            self.canvas.yview_scroll(-1, "units" )
+        elif event.num == 5 or event.delta < 0:
+            self.canvas.yview_scroll(1, "units" )
+
+    def __str__(self):
+        return str(self.outer)
