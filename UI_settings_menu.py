@@ -15,8 +15,8 @@ class Settings_menu(customtkinter.CTkToplevel):
         self.title("Параметры")
         tabview = customtkinter.CTkTabview(master=self, corner_radius=10)
         tabview.pack()
-        self.courtrooms_table = get_cr_table()
-        self.settings = get_settings_table()
+        self.courtrooms_table = sqlite.get_courtrooms_dict()
+        self.settings = sqlite.get_settings()
         tabview.configure(width=780, height=490)
         crooms = tabview.add("ЗАЛЫ")  # add tab at the end
         schedule = tabview.add("РАСПИСАНИЕ")  # add tab at the end
@@ -28,8 +28,8 @@ class Settings_menu(customtkinter.CTkToplevel):
         add_croom_btn.place(x=10, y=10)
         gather_now_btn = customtkinter.CTkButton(crooms, text='Запустить сборщик записей', corner_radius=10, command=gather_all)
         gather_now_btn.place(x=160, y=10)
-        if self.courtrooms_table.empty:
-            customtkinter.CTkLabel(master = crooms,text='Залов пока нет, добавьте первый зал',font=('roboto', 20)).pack(anchor='n', pady = 10)
+        if not self.courtrooms_table:
+            customtkinter.CTkLabel(master = crooms,text='Залов пока нет, добавьте первый зал',font=('roboto', 20)).place(x=200, y=100)
         else:
             self.names = {}
             self.paths = {}
@@ -39,9 +39,7 @@ class Settings_menu(customtkinter.CTkToplevel):
             lbpathcol = customtkinter.CTkLabel(master = crooms, text='Путь к залу', font=('roboto', 14))
             lbpathcol.place(x=170, y=40)
             y = 70
-            for idx, row in self.courtrooms_table.iterrows():
-                name = row['courtroomname']
-                path = row['diskdirectory']
+            for name, path in self.courtrooms_table.items():
                 lbname = customtkinter.CTkLabel(master=crooms, text=name, font=('roboto', 14))
                 lbname.place(x=10, y=y)
                 self.names[name] = lbname
@@ -64,12 +62,14 @@ class Settings_menu(customtkinter.CTkToplevel):
         
         Extra settings START
         """
-        self.convert_var = tkinter.BooleanVar()
+        self.convert_var = tkinter.IntVar()
         self.convert_var.set(self.settings['audio_convert'])
-        convert_switch = customtkinter.CTkSwitch(master=extra, text='Конвертировать в MP3 при обновлении списков', font=('roboto', 14), variable=self.convert_var, command=self.save_settings_to_base)
+        self.mp3_path_var = tkinter.StringVar()
+        self.mp3_path_var.set(self.settings['mp3_path'])
+        convert_switch = customtkinter.CTkSwitch(master=extra, text='Конвертировать в MP3 при обновлении списков', font=('roboto', 14), variable=self.convert_var, command=self.save_settings_to_base, offvalue=0, onvalue=1)
         convert_switch.place(x=10,y=20)
         customtkinter.CTkLabel(master=extra, text='Путь сохранения сконвертированных файлов').place(x=10,y=60)
-        self.mp3_entry = customtkinter.CTkEntry(master=extra, placeholder_text=r"\\Srsfemida\архив судебных заседаний\экспортированные mp3", width=470, height=30)
+        self.mp3_entry = customtkinter.CTkEntry(master=extra, textvariable=self.mp3_path_var, width=470, height=30)
         self.mp3_entry.place(x=10,y=90)
 
     def add_croom(self):
@@ -92,30 +92,29 @@ class Settings_menu(customtkinter.CTkToplevel):
         name = fr'{self.entry_name.get()}'.strip()
         path = fr'{self.entry_path.get()}'
         if os.path.exists(path):
-            if name not in list(self.courtrooms_table["courtroomname"]) or path not in list(self.courtrooms_table["diskdirectory"]) or len(name) > 3:
-                add_cr_to_sql(name, path)
+            if sqlite.add_courtroom(name, path):
                 print(f'New courtroom {name, path} added')
-                self.add_room_menu.destroy()
-                self.destroy()
-                self.__init__(self.root, sqlite)
-
             else:
-                print('Имя или путь уже есть в базе, либо имя короче 4 символов')
+                print(f'New courtroom {name, path} not added')
+            self.add_room_menu.destroy()
+            self.destroy()
+            self.__init__(self.root, sqlite)
         else:
             print('Директория недоступна')
 
     def save_settings_to_base(self):
         self.settings['mp3_path'] = fr'{self.mp3_entry.get()}'
         self.settings['audio_convert'] = self.convert_var.get()
-        update_settings_table(self.settings)
+        sqlite.update_settings(self.settings)
 
     def del_room_from_base(self, name):
-        del_cr_from_sql(name)
+        sqlite.remove_courtroom(name)
         self.names[name].configure(state='disabled')
         self.paths[name].configure(state='disabled')
         self.dels[name].configure(state='disabled')
 
     def on_closing(self):
+        self.save_settings_to_base()
         self.root.deiconify()
         self.destroy()
 

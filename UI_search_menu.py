@@ -10,7 +10,7 @@ class Search_menu(customtkinter.CTkToplevel):
         self.geometry('800x500')
         self.resizable(False,False)
         self.title("Поиск")
-        self.main_frame = customtkinter.CTkFrame(self, width=780, height=480,corner_radius=10)
+        self.main_frame = customtkinter.CTkFrame(self,corner_radius=10)
         self.main_frame.pack(padx=10, pady=10)
 
     def on_closing(self):
