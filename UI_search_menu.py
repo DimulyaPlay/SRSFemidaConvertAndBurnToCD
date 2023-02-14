@@ -1,7 +1,7 @@
-import customtkinter
 
 
-class Search_menu(customtkinter.CTkToplevel):
+
+class Cases_menu(customtkinter.CTkToplevel):
     def __init__(self,root, sqlite):
         super().__init__(root)
         self.protocol("WM_DELETE_WINDOW", self.on_closing)

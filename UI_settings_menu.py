@@ -1,120 +1,123 @@
-import customtkinter
-import tkinter
+# -*- coding: utf-8 -*-
 import os
 from Utils import *
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 
-class Settings_menu(customtkinter.CTkToplevel):
-    def __init__(self,root, sqlite):
-        super().__init__(root)
-        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+class Settings_menu(QtWidgets.QDialog):
+    def __init__(self, root, sqlite):
+        super().__init__(parent=root)
         self.root = root
         self.sqlite = sqlite
-        self.geometry('800x500')
-        self.resizable(False,False)
-        self.title("Параметры")
-        tabview = customtkinter.CTkTabview(master=self, corner_radius=10)
-        tabview.pack()
-        self.courtrooms_table = sqlite.get_courtrooms_dict()
         self.settings = sqlite.get_settings()
-        tabview.configure(width=780, height=490)
-        crooms = tabview.add("ЗАЛЫ")  # add tab at the end
-        schedule = tabview.add("РАСПИСАНИЕ")  # add tab at the end
-        extra = tabview.add("ДОПОЛНИТЕЛЬНО")  # set currently visible tab
-        """
-        Courtrooms settings START
-        """
-        add_croom_btn = customtkinter.CTkButton(crooms, text='Добавить зал', corner_radius=10, command=self.add_croom)
-        add_croom_btn.place(x=10, y=10)
-        gather_now_btn = customtkinter.CTkButton(crooms, text='Запустить сборщик записей', corner_radius=10, command=gather_all)
-        gather_now_btn.place(x=160, y=10)
-        if not self.courtrooms_table:
-            customtkinter.CTkLabel(master = crooms,text='Залов пока нет, добавьте первый зал',font=('roboto', 20)).place(x=200, y=100)
-        else:
-            self.names = {}
-            self.paths = {}
-            self.dels = {}
-            lbnamecol = customtkinter.CTkLabel(master = crooms, text='Название зала', font=('roboto', 14))
-            lbnamecol.place(x=10, y=40)
-            lbpathcol = customtkinter.CTkLabel(master = crooms, text='Путь к залу', font=('roboto', 14))
-            lbpathcol.place(x=170, y=40)
-            y = 70
-            for name, path in self.courtrooms_table.items():
-                lbname = customtkinter.CTkLabel(master=crooms, text=name, font=('roboto', 14))
-                lbname.place(x=10, y=y)
-                self.names[name] = lbname
-                lbpath = customtkinter.CTkLabel(master=crooms, text=path, font=('roboto', 14))
-                lbpath.place(x=170, y=y)
-                self.paths[name] = lbpath
-                xbtn = customtkinter.CTkButton(master=crooms, text='X',font=('roboto', 14), command=lambda a=name: self.del_room_from_base(a), width=25, height=15, fg_color ='red', hover_color='darkred')
-                xbtn.place(x=720, y=y)
-                self.dels[name] = xbtn
-                y += 25
-        """
-        Courtrooms settings END
-        
-        Schedule settings START
-        """
-        customtkinter.CTkLabel(schedule, text="\nВ разработке\n\nСбор записей можно осуществлять в автоматическом режиме, \nсоздав задачу в планировщике windows на запуск программы с параметром '-gather'.", font=('roboto', 16)).pack()
+        self.courtrooms = sqlite.get_courtrooms_dict()
+        self.setWindowTitle("ПАРАМЕТРЫ")
+        self.setFixedSize(539, 431)
+        # MAIN TAB WIDGET
+        self.tabWidget = QtWidgets.QTabWidget(self)
+        self.tabWidget.setGeometry(QtCore.QRect(0, 0, 539, 431))
+        self.tabWidget.setTabShape(QtWidgets.QTabWidget.Rounded)
+        # CR TAB INIT
+        self.crooms_tab = QtWidgets.QWidget()
+        self.tabWidget.addTab(self.crooms_tab, "Залы")
+        self.addCourtroomButton = QtWidgets.QPushButton(self.crooms_tab, clicked=lambda: self.add_crroom())
+        self.addCourtroomButton.setGeometry(QtCore.QRect(10, 10, 111, 31))
+        self.addCourtroomButton.setText("Добавить зал")
+        self.removeCourtroomButton = QtWidgets.QPushButton(self.crooms_tab, clicked = lambda: self.remove_crroom())
+        self.removeCourtroomButton.setGeometry(QtCore.QRect(125, 10, 171, 31))
+        self.removeCourtroomButton.setText("Удалить выбранный зал")
+        self.startGatheringButton = QtWidgets.QPushButton(self.crooms_tab)
+        self.startGatheringButton.setGeometry(QtCore.QRect(351, 10, 171, 31))
+        self.startGatheringButton.setText("Запустить сборщик записей")
+        self.mylist_listWidget = QtWidgets.QListWidget(self.crooms_tab)
+        self.mylist_listWidget.setGeometry(QtCore.QRect(10, 50, 511, 351))
+        # GENERATE LIST OF CR
+        for name, path in self.courtrooms.items():
+            row = name + '\n' + fr'{path}'
+            self.mylist_listWidget.addItem(row)
+        # SCHDLE TAB INIT and text placeholder
+        self.schedule_tab = QtWidgets.QWidget()
+        self.tabWidget.addTab(self.schedule_tab, "Расписание")
+        self.label = QtWidgets.QLabel(self.schedule_tab)
+        self.label.setGeometry(QtCore.QRect(10, 10, 801, 53))
+        self.label.setText("В разработке\n"
+                             "\n"
+                             "Сбор записей можно осуществлять в автоматическом режиме, \n"
+                             "создав задачу в планировщике windows на запуск программы с параметром \'-gather\'.")
+        # EXTRA TAB INIT
+        self.extra_tab = QtWidgets.QWidget()
+        self.tabWidget.addTab(self.extra_tab, "Дополнительно")
+        self.mp3_save_checkBox = QtWidgets.QCheckBox(self.extra_tab)
+        self.mp3_save_checkBox.setGeometry(QtCore.QRect(10, 10, 231, 21))
+        self.mp3_save_checkBox.setText("Конвертировать в MP3 при сборе записей")
+        self.mp3_save_checkBox.setChecked(bool(int(self.settings['audio_convert'])))
+        self.mp3_save_path = QtWidgets.QLineEdit(self.extra_tab)
+        self.mp3_save_path.setGeometry(QtCore.QRect(10, 40, 231, 20))
+        self.mp3_save_path.setPlaceholderText("Папка для сохранения mp3")
+        self.show()
 
-        """
-        Schedule settings END
-        
-        Extra settings START
-        """
-        self.convert_var = tkinter.IntVar()
-        self.convert_var.set(self.settings['audio_convert'])
-        self.mp3_path_var = tkinter.StringVar()
-        self.mp3_path_var.set(self.settings['mp3_path'])
-        convert_switch = customtkinter.CTkSwitch(master=extra, text='Конвертировать в MP3 при обновлении списков', font=('roboto', 14), variable=self.convert_var, command=self.save_settings_to_base, offvalue=0, onvalue=1)
-        convert_switch.place(x=10,y=20)
-        customtkinter.CTkLabel(master=extra, text='Путь сохранения сконвертированных файлов').place(x=10,y=60)
-        self.mp3_entry = customtkinter.CTkEntry(master=extra, textvariable=self.mp3_path_var, width=470, height=30)
-        self.mp3_entry.place(x=10,y=90)
+    def closeEvent(self, event):
+        self.apply_settings()
+        self.root.show()
+        self.hide()
+        event.ignore()
 
-    def add_croom(self):
-        self.add_room_menu = customtkinter.CTkToplevel(self.root)
-        self.add_room_menu.geometry('350x175')
-        self.add_room_menu.resizable(False, False)
-        self.add_room_menu.title("Добавить зал")
-        lb = customtkinter.CTkLabel(self.add_room_menu, text='Добавление нового зала', font=('roboto', 20))
-        lb.pack(anchor='n', padx = 10, pady = 10)
-        frame_name = customtkinter.CTkFrame(self.add_room_menu, height=40, width=330)
-        frame_name.place(x=10,y=45)
-        add_btn = customtkinter.CTkButton(self.add_room_menu, text='Добавить зал', corner_radius=10, command=self.add_room_to_base)
-        add_btn.pack(anchor='s', pady = 10,side='bottom')
-        self.entry_name = customtkinter.CTkEntry(master=frame_name, placeholder_text="Название зала", width=320, height=30)
-        self.entry_name.pack(padx=5, pady=5)
-        self.entry_path = customtkinter.CTkEntry(master=frame_name, placeholder_text=r"\\Srsfemida\архив судебных заседаний\Зал №5", width=320, height=30)
-        self.entry_path.pack(padx=5, pady=5)
+    def add_crroom(self):
+        addCourtroom = QtWidgets.QDialog(parent=self)
+        addCourtroom.setFixedSize(277, 91)
+        addCourtroom.setWindowTitle("Добавить зал")
+        crNameLine = QtWidgets.QLineEdit(addCourtroom)
+        crNameLine.setGeometry(QtCore.QRect(10, 10, 261, 20))
+        crNameLine.setPlaceholderText("Введите название, например: Зал 1")
+        crPathLine = QtWidgets.QLineEdit(addCourtroom)
+        crPathLine.setGeometry(QtCore.QRect(10, 40, 261, 20))
+        crPathLine.setPlaceholderText(r"Введите путь, например: С:\Залы\Зал 1")
+        saveCancelButton = QtWidgets.QDialogButtonBox(parent = addCourtroom, orientation = QtCore.Qt.Horizontal)
+        saveCancelButton.setGeometry(QtCore.QRect(60, 60, 161, 31))
+        saveCancelButton.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel | QtWidgets.QDialogButtonBox.Save)
+        saveCancelButton.accepted.connect(lambda: add_room_to_base())  # type: ignore
+        saveCancelButton.rejected.connect(addCourtroom.reject)  # type: ignore
+        addCourtroom.show()
 
-    def add_room_to_base(self):
-        name = fr'{self.entry_name.get()}'.strip()
-        path = fr'{self.entry_path.get()}'
-        if os.path.exists(path):
-            if sqlite.add_courtroom(name, path):
-                print(f'New courtroom {name, path} added')
+        def add_room_to_base():
+            name = fr'{crNameLine.text()}'.strip()
+            path = fr'{crPathLine.text()}'
+            if os.path.exists(path):
+                res = self.sqlite.add_courtroom(name, path)
+                if res == 0:
+                    print(f'New courtroom {name, path} added')
+                    result_name = 'Успех'
+                    result_text = 'Зал был успешно добавлен.'
+
+                else:
+                    result_name = 'Неудача'
+                    result_text = f'Зал не был добавлен. {errorcode[res]}'
+                    print(f'New courtroom {name, path} not added')
+                QtWidgets.QMessageBox(self,result_name, result_text)
+                addCourtroom.close()
+                self.mylist_listWidget.addItem(f'{name}\n{path}')
             else:
-                print(f'New courtroom {name, path} not added')
-            self.add_room_menu.destroy()
-            self.destroy()
-            self.__init__(self.root, sqlite)
-        else:
-            print('Директория недоступна')
+                QtWidgets.QMessageBox.about(self, 'Ошибка','Указанная директория недоступна')
+                print('Директория недоступна')
 
-    def save_settings_to_base(self):
-        self.settings['mp3_path'] = fr'{self.mp3_entry.get()}'
-        self.settings['audio_convert'] = self.convert_var.get()
+    def remove_crroom(self):
+        qm = QtWidgets.QMessageBox()
+        ret = qm.question(self, '', "Удалить из базы данных все записи, связанные с этим залом?\nОтменить данное действие невозможно", qm.Yes | qm.No | qm.Cancel)
+        if ret == qm.Yes:
+            clicked = self.mylist_listWidget.currentRow()
+            self.sqlite.remove_courtroom(list(self.courtrooms.keys())[clicked])
+            self.sqlite.remove_all_ch_in_courtroom(list(self.courtrooms.keys())[clicked])
+            self.mylist_listWidget.takeItem(clicked)
+        if ret == qm.No:
+            clicked = self.mylist_listWidget.currentRow()
+            self.sqlite.remove_courtroom(list(self.courtrooms.keys())[clicked])
+            self.mylist_listWidget.takeItem(clicked)
+        if ret == qm.Cancel:
+            return
+
+    def apply_settings(self):
+        self.settings['mp3_path'] = fr'{self.mp3_save_path.text()}'
+        self.settings['audio_convert'] = int(self.mp3_save_checkBox.isChecked())
         sqlite.update_settings(self.settings)
 
-    def del_room_from_base(self, name):
-        sqlite.remove_courtroom(name)
-        self.names[name].configure(state='disabled')
-        self.paths[name].configure(state='disabled')
-        self.dels[name].configure(state='disabled')
-
-    def on_closing(self):
-        self.save_settings_to_base()
-        self.root.deiconify()
-        self.destroy()
 

@@ -1,35 +1,44 @@
-import customtkinter
+from PyQt5 import QtWidgets as qtw
+from PyQt5 import QtGui as qtg
+# from UI_search_menu import Cases_menu
+# from UI_courtrooms_menu import Courtrooms_menu
 from UI_settings_menu import Settings_menu
-from UI_search_menu import Search_menu
-from UI_courtrooms_menu import Courtrooms_menu
 from Utils import *
 
 
-class App(customtkinter.CTk):
+class MainMenu(qtw.QWidget):
     def __init__(self, sqlite, admin_mode=False):
         super().__init__()
-        self.title("SRS Femida. Экспорт аудиозаписей")
-        self.geometry = f"{330}x{180}"
-        self.resizable(False, False)
-        self.button_courtrooms = customtkinter.CTkButton(master=self, command=self.open_cr_menu, width=320, height=90, text="ОТКРЫТЬ ЗАЛЫ", font=('roboto', 24))
-        self.button_courtrooms.grid(row=0, column=0, padx=10, pady=10, sticky="s")
-        self.button_search = customtkinter.CTkButton(master=self, command=self.open_search_menu, width=320, height=90, text="ИСКАТЬ ПО ДЕЛУ", font=('roboto', 24))
-        self.button_search.grid(row=1, column=0, padx=10, pady=10, sticky="s")
-        self.button_settings = customtkinter.CTkButton(master=self, command=self.open_settings, width=320, height=90, text="ПАРАМЕТРЫ", font=('roboto', 24), state='normal' if admin_mode else "disabled")
-        self.button_settings.grid(row=2, column=0, padx=10, pady=10, sticky="s")
+        self.setWindowTitle("SRS Femida. Экспорт аудиозаписей")
+        self.resize(330,180)
+        self.setLayout(qtw.QVBoxLayout())
         self.sqlite = sqlite
+        button_cases = qtw.QPushButton('ИСКАТЬ ПО ДЕЛУ',clicked=lambda: self.open_cases_menu())
+        button_cases.setFont(qtg.QFont('roboto', 24))
+        self.layout().addWidget(button_cases)
+        button_courtrooms = qtw.QPushButton('ОТКРЫТЬ ЗАЛЫ',clicked=lambda: self.open_cr_menu())
+        button_courtrooms.setFont(qtg.QFont('roboto', 24))
+        self.layout().addWidget(button_courtrooms)
+        button_settings = qtw.QPushButton('ПАРАМЕТРЫ',clicked=lambda: self.open_settings())
+        button_settings.setFont(qtg.QFont('roboto', 24))
+        button_settings.setEnabled(admin_mode)
+        self.layout().addWidget(button_settings)
+        self.show()
 
     def open_cr_menu(self):
-        self.withdraw()
+        self.hide()
+        print('now new cr menu opened')
         Courtrooms_menu(self, self.sqlite)
         return
 
-    def open_search_menu(self):
-        self.withdraw()
-        Search_menu(self, self.sqlite)
+    def open_cases_menu(self):
+        self.hide()
+        print('now new cases menu opened')
+        Cases_menu(self, self.sqlite)
         return
 
     def open_settings(self):
-        self.withdraw()
+        self.hide()
+        print('now new settings menu opened')
         Settings_menu(self, self.sqlite)
         return

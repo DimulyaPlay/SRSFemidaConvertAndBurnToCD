@@ -1,13 +1,4 @@
-from tkinter.messagebox import showinfo, showwarning, showerror
+errorcode = {
+    "UNIQUE constraint failed: Courtrooms.diskdirectory": "Путь к залу должен быть уникален",
 
-
-def show_info(title, text):
-    showinfo(title, text)
-
-
-def show_warning(title, text):
-    showwarning(title, text)
-
-
-def show_error(title, text):
-    showerror(title, text)
+}

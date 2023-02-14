@@ -3,7 +3,6 @@ import os
 import subprocess
 import sys
 from db_utilities import *
-import customtkinter
 import pandas as pd
 from threading import Thread
 from time import sleep
@@ -44,19 +43,6 @@ def burn_mp3_files_to_disk(filelist, drive=0):
 
 def open_mp3(mp3path):
     subprocess.Popen(mp3player+' '+fr'"{mp3path}"', shell=False)
-
-
-def get_ch_table_by_cr_name(cr_name):
-    """
-    getting courthearings table where coutroom==cr_name
-    :param cr_name: name of the courtroom
-    :return: courthearings df from only one courtroom
-    """
-    df = pd.DataFrame(sqlite.select_as_dataframe(table_name="Courthearings", where=Where(key='courtroomname', value=cr_name)))
-    df['date'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
-    df.sort_values('date', inplace=True, ascending=False)
-    df.reset_index(drop=True, inplace=True)
-    return df
 
 
 def gather_new_names_and_paths_from_cr(cr_name):

@@ -12,14 +12,13 @@ class db_host:
     """
     def add_courtroom(self, courtroomname, filepath):
         data_tuple = (courtroomname, filepath)
-        self.cursor.execute(f'INSERT INTO Courtrooms VALUES {data_tuple}')
         try:
+            self.cursor.execute(f'INSERT INTO Courtrooms VALUES {data_tuple}')
             self.db.commit()
-            return True
+            return 0
         except Exception as e:
             print('Не удалось добавить зал, такое имя уже занято', e)
-            show_error("Ошибка", f"Зал не был добавлен, {e}")
-            return False
+            return e
 
     def get_courtrooms_dict(self):
         df = pd.read_sql_query("SELECT * FROM Courtrooms", self.db)
@@ -29,14 +28,13 @@ class db_host:
         return cr_dict
 
     def remove_courtroom(self, courtroomname):
-        self.cursor.execute(f"DELETE FROM Courtrooms WHERE courtroomname = '{courtroomname}'")
         try:
+            self.cursor.execute(f"DELETE FROM Courtrooms WHERE courtroomname = '{courtroomname}'")
             self.db.commit()
-            return True
+            return 0
         except Exception as e:
-            print('Не удалось добавить зал, такое имя уже занято', e)
-            show_error("Ошибка", f"Зал не был удален, {e}")
-            return False
+            print('Не удалось удалить зал', e)
+            return e
 
     """
     COURTROOMS TABLE SECTION - END
@@ -47,13 +45,12 @@ class db_host:
     def add_courthearing(self, foldername, case, date, courtroomname, mp3_path, mp3_duration):
         foldername_courtroomname = foldername + '/' + courtroomname
         data_tuple = (foldername_courtroomname, foldername, case, date, courtroomname, mp3_path, mp3_duration)
-        self.cursor.execute(f'INSERT INTO Courthearings VALUES {data_tuple}')
         try:
+            self.cursor.execute(f'INSERT INTO Courthearings VALUES {data_tuple}')
             self.db.commit()
-            return True
+            return 0
         except Exception as e:
-            print('Не удалось добавить заседание, комбинация "имя/зал" уже занята', e)
-            return False
+            return e
 
     def get_courthearings(self):
         df = pd.read_sql_query("SELECT * FROM Courthearings", self.db)
@@ -70,12 +67,22 @@ class db_host:
         return df
 
     def update_courthearing_add_mp3(self, foldername, courtroomname, mp3_path, mp3_duration):
-        self.cursor.execute(f"UPDATE Courthearings SET mp3path = '{mp3_path}', mp3duration = '{mp3_duration}' WHERE foldername_cr = '{foldername+'/'+courtroomname}'")
         try:
+            self.cursor.execute(
+                f"UPDATE Courthearings SET mp3path = '{mp3_path}', mp3duration = '{mp3_duration}' WHERE foldername_cr = '{foldername + '/' + courtroomname}'")
             self.db.commit()
-            print(f'{foldername} updated')
+            return 0
         except Exception as e:
-            show_error('Ошибка', f'Ошибка обновления записи: {e}')
+            return e
+
+    def remove_all_ch_in_courtroom(self, courtroomname):
+        try:
+            self.cursor.execute(f"DELETE FROM Courthearings WHERE courtroomname = '{courtroomname}'")
+            self.db.commit()
+            return 0
+        except Exception as e:
+            print('Не удалось удалить', e)
+            return e
 
     """
     COURTHEARINGS TABLE SECTION - END
