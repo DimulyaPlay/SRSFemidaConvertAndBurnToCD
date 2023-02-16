@@ -1,21 +1,20 @@
 import glob
 import os
+import shutil
 import subprocess
-import sys
-from db_utilities import *
-import pandas as pd
 from threading import Thread
 from time import sleep
+import tempfile
 from pydub import AudioSegment
 import soundfile as sf
-import tempfile
 import clr
-import tkinter as tk
+from db_utilities import *
 from errors import *
+
 current_path = os.getcwd()
+current_media_path = current_path+'\\audio_db'
 clr.AddReference(current_path+'\\csburnermodule\\CDBurnerModule.dll')
 from CDBurnerModule import CDBurner
-
 
 sqlite = db_host(current_path+'\\courtrooms.db')
 AudioSegment.converter = current_path+"\\ffmpeg.exe"
@@ -81,15 +80,17 @@ def gather_from_courtroom(cr_name, settings):
     :return:
     """
     names_and_paths = gather_new_names_and_paths_from_cr(cr_name)
-    mp3_root_path = settings['mp3_path']
     convert_audio = settings['audio_convert']
+    if not os.path.exists(f'{current_media_path}\\{cr_name}\\'):
+        os.mkdir(f'{current_media_path}\\{cr_name}\\')
     print('found', len(names_and_paths), 'records in', cr_name)
     for name, path in names_and_paths:
         case, date = gather_case_date_from_name(name)
         if convert_audio == "1":
             try:
                 filepaths = glob.glob(path+r'\*\*')
-                mp3_path = f'{mp3_root_path}\\{cr_name}\\{name}.mp3'
+                mp3_path = f'{current_media_path}\\{cr_name}\\{name}.mp3'
+                mp3_path_public = f'\\{cr_name}\\{name}.mp3'
                 duration = concat_audio_by_time(filepaths, mp3_path)
             except Exception as e:
                 print('error on converting audio', name, e)
@@ -98,8 +99,13 @@ def gather_from_courtroom(cr_name, settings):
                 pass
         else:
             mp3_path = ''
+            mp3_path_public = ''
             duration = ''
-        if sqlite.add_courthearing(foldername = name, case = case, date = date, courtroomname = cr_name, mp3_path = mp3_path, mp3_duration = duration):
+        sqldate = date.split('-')
+        sqldate = sqldate[2]+sqldate[1]+sqldate[0]
+        res = sqlite.add_courthearing(foldername=name, case=case, date=date, courtroomname=cr_name, mp3_path=mp3_path_public,
+                                mp3_duration=duration, sqldate=sqldate, many=True)
+        if res == 0:
             print(case,' added')
         else:
             print(case,' not added')
@@ -117,19 +123,8 @@ def gather_all():
         print('gathering from', name)
         gather_from_courtroom(name, settings)
         print('gathering from',name, 'complete')
+    sqlite.db.commit()
     print('gathering successfully completed')
-
-
-def convert_to_mp3(ch_foldername, cr_name, c):
-    cr_folder = sqlite.get_courtrooms_dict()[cr_name]
-    folder_to_convert = cr_folder + '\\' + ch_foldername
-    filepaths = glob.glob(folder_to_convert + r'\*\*')
-    mp3_path = f'{sqlite.get_settings()["mp3_path"]}\\{cr_name}\\{ch_foldername}.mp3'
-    if not os.path.exists(f'{sqlite.get_settings()["mp3_path"]}\\{cr_name}\\'):
-        os.mkdir(f'{sqlite.get_settings()["mp3_path"]}\\{cr_name}\\')
-    duration = concat_audio_by_time(filepaths, mp3_path)
-    sqlite.update_courthearing_add_mp3(ch_foldername, cr_name, mp3_path, duration)
-    c = {}
 
 
 def concat_audio_by_time(audio_filepaths, outmp3, normalize_volume = False):
@@ -180,53 +175,3 @@ def concat_audio_by_time(audio_filepaths, outmp3, normalize_volume = False):
 def set_to_target_level(sound, target_level):
     difference = target_level - sound.dBFS
     return sound.apply_gain(difference)
-
-
-class VerticalScrolledFrame:
-    def __init__(self, master, **kwargs):
-        self.outer = customtkinter.CTkFrame(master, bg_color='transparent', fg_color='transparent')
-        self.vsb = customtkinter.CTkScrollbar(self.outer, orientation=tk.VERTICAL, corner_radius=10)
-        self.vsb.pack(fill=tk.Y, side=tk.RIGHT)
-        self.canvas = tk.Canvas(self.outer, highlightthickness=0, background='gray14')
-        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.canvas['yscrollcommand'] = self.vsb.set
-        self.canvas.bind("<Enter>", self._bind_mouse)
-        self.canvas.bind("<Leave>", self._unbind_mouse)
-        self.vsb['command'] = self.canvas.yview
-
-        self.inner = customtkinter.CTkFrame(self.canvas, bg_color='transparent', fg_color='transparent')
-        # pack the inner Frame into the Canvas with the topleft corner 4 pixels offset
-        self.canvas.create_window(0, 0, window=self.inner, anchor='nw')
-        self.inner.bind("<Configure>", self._on_frame_configure)
-
-        self.outer_attr = set(dir(tk.Widget))
-
-    def __getattr__(self, item):
-        if item in self.outer_attr:
-            return getattr(self.outer, item)
-        else:
-            return getattr(self.inner, item)
-
-    def _on_frame_configure(self, event=None):
-        x1, y1, x2, y2 = self.canvas.bbox("all")
-        height = self.canvas.winfo_height()
-        self.canvas.config(scrollregion = (0,0, x2, max(y2, height)))
-
-    def _bind_mouse(self, event=None):
-        self.canvas.bind_all("<4>", self._on_mousewheel)
-        self.canvas.bind_all("<5>", self._on_mousewheel)
-        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
-
-    def _unbind_mouse(self, event=None):
-        self.canvas.unbind_all("<4>")
-        self.canvas.unbind_all("<5>")
-        self.canvas.unbind_all("<MouseWheel>")
-
-    def _on_mousewheel(self, event):
-        if event.num == 4 or event.delta > 0:
-            self.canvas.yview_scroll(-1, "units")
-        elif event.num == 5 or event.delta < 0:
-            self.canvas.yview_scroll(1, "units")
-
-    def __str__(self):
-        return str(self.outer)

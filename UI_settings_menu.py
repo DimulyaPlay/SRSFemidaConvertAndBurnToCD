@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 import os
-from Utils import *
 from PyQt5 import QtCore, QtGui, QtWidgets
+from Utils import *
 
 
-class Settings_menu(QtWidgets.QDialog):
+class Settings_menu(QtWidgets.QMainWindow):
     def __init__(self, root, sqlite):
-        super().__init__(parent=root)
+        super(Settings_menu, self).__init__(parent=root)
+
         self.root = root
         self.sqlite = sqlite
         self.settings = sqlite.get_settings()
@@ -26,15 +27,17 @@ class Settings_menu(QtWidgets.QDialog):
         self.removeCourtroomButton = QtWidgets.QPushButton(self.crooms_tab, clicked = lambda: self.remove_crroom())
         self.removeCourtroomButton.setGeometry(QtCore.QRect(125, 10, 171, 31))
         self.removeCourtroomButton.setText("Удалить выбранный зал")
-        self.startGatheringButton = QtWidgets.QPushButton(self.crooms_tab)
+        self.startGatheringButton = QtWidgets.QPushButton(self.crooms_tab, clicked = lambda: gather_all())
         self.startGatheringButton.setGeometry(QtCore.QRect(351, 10, 171, 31))
         self.startGatheringButton.setText("Запустить сборщик записей")
         self.mylist_listWidget = QtWidgets.QListWidget(self.crooms_tab)
         self.mylist_listWidget.setGeometry(QtCore.QRect(10, 50, 511, 351))
+        self.cr_name_path_dict = {}
         # GENERATE LIST OF CR
         for name, path in self.courtrooms.items():
             row = name + '\n' + fr'{path}'
             self.mylist_listWidget.addItem(row)
+            self.cr_name_path_dict[row] = name
         # SCHDLE TAB INIT and text placeholder
         self.schedule_tab = QtWidgets.QWidget()
         self.tabWidget.addTab(self.schedule_tab, "Расписание")
@@ -58,8 +61,8 @@ class Settings_menu(QtWidgets.QDialog):
 
     def closeEvent(self, event):
         self.apply_settings()
-        self.root.show()
         self.hide()
+        self.root.show()
         event.ignore()
 
     def add_crroom(self):
@@ -93,31 +96,34 @@ class Settings_menu(QtWidgets.QDialog):
                     result_name = 'Неудача'
                     result_text = f'Зал не был добавлен. {errorcode[res]}'
                     print(f'New courtroom {name, path} not added')
-                QtWidgets.QMessageBox(self,result_name, result_text)
+                QtWidgets.QMessageBox.about(self, result_name, result_text)
                 addCourtroom.close()
-                self.mylist_listWidget.addItem(f'{name}\n{path}')
+                row = f'{name}\n{path}'
+                self.mylist_listWidget.addItem(row)
+                self.cr_name_path_dict[row] = name
             else:
                 QtWidgets.QMessageBox.about(self, 'Ошибка','Указанная директория недоступна')
                 print('Директория недоступна')
 
     def remove_crroom(self):
         qm = QtWidgets.QMessageBox()
+        clicked_idx = self.mylist_listWidget.currentRow()
+        if clicked_idx == -1:
+            return
+        clicked_txt = self.mylist_listWidget.currentItem().text()
         ret = qm.question(self, '', "Удалить из базы данных все записи, связанные с этим залом?\nОтменить данное действие невозможно", qm.Yes | qm.No | qm.Cancel)
         if ret == qm.Yes:
-            clicked = self.mylist_listWidget.currentRow()
-            self.sqlite.remove_courtroom(list(self.courtrooms.keys())[clicked])
-            self.sqlite.remove_all_ch_in_courtroom(list(self.courtrooms.keys())[clicked])
-            self.mylist_listWidget.takeItem(clicked)
+            self.sqlite.remove_courtroom(self.cr_name_path_dict[clicked_txt], withrecords=True)
+            self.mylist_listWidget.takeItem(clicked_idx)
         if ret == qm.No:
-            clicked = self.mylist_listWidget.currentRow()
-            self.sqlite.remove_courtroom(list(self.courtrooms.keys())[clicked])
-            self.mylist_listWidget.takeItem(clicked)
+            self.sqlite.remove_courtroom(self.cr_name_path_dict[clicked_txt], withrecords=False)
+            self.mylist_listWidget.takeItem(clicked_idx)
         if ret == qm.Cancel:
             return
 
     def apply_settings(self):
-        self.settings['mp3_path'] = fr'{self.mp3_save_path.text()}'
         self.settings['audio_convert'] = int(self.mp3_save_checkBox.isChecked())
         sqlite.update_settings(self.settings)
+
 
 

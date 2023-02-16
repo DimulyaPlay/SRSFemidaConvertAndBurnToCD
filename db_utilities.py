@@ -1,12 +1,18 @@
 import sqlite3
 import pandas as pd
+import datetime
 from errors import *
 
 
 class db_host:
     def __init__(self, db_filepath):
-        self.db = sqlite3.connect(db_filepath)
-        self.cursor = self.db.cursor()
+        try:
+            self.db = sqlite3.connect(db_filepath, check_same_thread=False)  # disable check safety because only server can write to the DB with one write op at time
+            self.cursor = self.db.cursor()
+        except:
+            print('connected to ', db_filepath)
+            input()
+
     """
     COURTROOMS TABLE SECTION - START
     """
@@ -27,9 +33,11 @@ class db_host:
             cr_dict[row['courtroomname']] = row['diskdirectory']
         return cr_dict
 
-    def remove_courtroom(self, courtroomname):
+    def remove_courtroom(self, courtroomname, withrecords=False):
         try:
             self.cursor.execute(f"DELETE FROM Courtrooms WHERE courtroomname = '{courtroomname}'")
+            if withrecords:
+                self.cursor.execute(f"DELETE FROM Courthearings WHERE courtroomname = '{courtroomname}'")
             self.db.commit()
             return 0
         except Exception as e:
@@ -42,26 +50,43 @@ class db_host:
     COURTHEARINGS TABLE SECTION - START
     """
 
-    def add_courthearing(self, foldername, case, date, courtroomname, mp3_path, mp3_duration):
+    def add_courthearing(self, foldername, case, date, courtroomname, mp3_path, mp3_duration, sqldate, many=False):
         foldername_courtroomname = foldername + '/' + courtroomname
-        data_tuple = (foldername_courtroomname, foldername, case, date, courtroomname, mp3_path, mp3_duration)
+        data_tuple = (foldername_courtroomname, foldername, case, date, courtroomname, mp3_path, mp3_duration, sqldate)
         try:
             self.cursor.execute(f'INSERT INTO Courthearings VALUES {data_tuple}')
-            self.db.commit()
+            if not many:
+                self.db.commit()
+
             return 0
         except Exception as e:
             return e
 
     def get_courthearings(self):
-        df = pd.read_sql_query("SELECT * FROM Courthearings", self.db)
+        df = pd.read_sql_query("SELECT * FROM Courthearings", self.db, parse_dates={'date':'%d-%m-%Y'})
+        # WHERE
+        # date
+        # BETWEEN
+        # 20221201
+        # AND
+        # 20221231
         df['date'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
         df.sort_values('date', inplace=True, ascending=False)
         df.reset_index(drop=True, inplace=True)
         return df
 
     def get_courthearings_by_courtroom(self, cr_name):
-        df = pd.read_sql_query(f"SELECT * FROM Courthearings WHERE courtroomname = '{cr_name}'", self.db)
-        df['date'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
+        df = pd.read_sql_query(f"SELECT * FROM Courthearings WHERE courtroomname = '{cr_name}'", self.db, parse_dates={'date':'%d-%m-%Y'})
+        # df['date'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
+        df.sort_values('date', inplace=True, ascending=False)
+        df.reset_index(drop=True, inplace=True)
+        return df
+
+    def get_courthearings_by_courtroom_and_date(self, cr_name, period):
+        df = pd.read_sql_query(f"SELECT * FROM Courthearings WHERE courtroomname = '{cr_name}'", self.db, parse_dates={'date': '%d-%m-%Y'})
+        # df['date'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
+        if period is not None:
+            df = df[df.date > datetime.datetime.now() - pd.to_timedelta(period)]
         df.sort_values('date', inplace=True, ascending=False)
         df.reset_index(drop=True, inplace=True)
         return df
@@ -73,15 +98,6 @@ class db_host:
             self.db.commit()
             return 0
         except Exception as e:
-            return e
-
-    def remove_all_ch_in_courtroom(self, courtroomname):
-        try:
-            self.cursor.execute(f"DELETE FROM Courthearings WHERE courtroomname = '{courtroomname}'")
-            self.db.commit()
-            return 0
-        except Exception as e:
-            print('Не удалось удалить', e)
             return e
 
     """
