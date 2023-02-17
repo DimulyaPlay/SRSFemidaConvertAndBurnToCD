@@ -2,6 +2,7 @@ import glob
 import os
 import shutil
 import subprocess
+import sys
 from threading import Thread
 from time import sleep
 import tempfile
@@ -12,13 +13,23 @@ from db_utilities import *
 from errors import *
 
 current_path = os.getcwd()
-current_media_path = current_path+'\\audio_db'
 clr.AddReference(current_path+'\\csburnermodule\\CDBurnerModule.dll')
 from CDBurnerModule import CDBurner
 
-sqlite = db_host(current_path+'\\courtrooms.db')
+
+def get_server_path():
+    with open(current_path+'\\server_db_path.txt', 'r') as sp:
+        server_db_path = sp.readline()
+        print(server_db_path)
+    return server_db_path
+
+
+dp_path = current_path+'\\courtrooms.db' if '-server_mode' in sys.argv else get_server_path()
+sqlite = db_host(dp_path)
 AudioSegment.converter = current_path+"\\ffmpeg.exe"
 mp3player = current_path + '\\foobar2000\\foobar2000.exe'
+settings = sqlite.get_settings()
+current_media_path = settings['server_media_path'] if '-server_mode' in sys.argv else settings['client_media_path']
 
 
 def wait_for_rom_ready(drive):
@@ -86,7 +97,7 @@ def gather_from_courtroom(cr_name, settings):
     print('found', len(names_and_paths), 'records in', cr_name)
     for name, path in names_and_paths:
         case, date = gather_case_date_from_name(name)
-        if convert_audio == "1":
+        if convert_audio == "1" and current_media_path != '':
             try:
                 filepaths = glob.glob(path+r'\*\*')
                 mp3_path = f'{current_media_path}\\{cr_name}\\{name}.mp3'

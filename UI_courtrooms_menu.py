@@ -23,15 +23,13 @@ class Courtrooms_menu(QtWidgets.QMainWindow):
 
         self.comboBoxPeriods = QtWidgets.QComboBox(self.centralwidget)
         self.comboBoxPeriods.setGeometry(QtCore.QRect(180, 10, 101, 22))
-        self.comboBoxPeriods.addItem("7 дней")
-        self.comboBoxPeriods.addItem("30 дней")
-        self.comboBoxPeriods.addItem("365 дней")
-        self.comboBoxPeriods.addItem("Все записи")
+        for i in list(self.periods_list_to_query.keys()):
+            self.comboBoxPeriods.addItem(i)
 
         self.labelChosenCount = QtWidgets.QLabel(self.centralwidget)
         self.labelChosenCount.setGeometry(QtCore.QRect(290, 10, 180, 21))
         self.labelChosenCount.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        self.labelChosenCount.setText("Выбрано для записи: Х файлов")
+        self.labelChosenCount.setText("Выбрано для записи: 0 файлов")
 
         self.pushButtonStartBurning = QtWidgets.QPushButton(self.centralwidget)
         self.pushButtonStartBurning.setGeometry(QtCore.QRect(583, 10, 91, 23))

@@ -10,8 +10,8 @@ class db_host:
             self.db = sqlite3.connect(db_filepath, check_same_thread=False)  # disable check safety because only server can write to the DB with one write op at time
             self.cursor = self.db.cursor()
         except:
-            print('connected to ', db_filepath)
-            input()
+            print('Not connected to ', db_filepath)
+            return
 
     """
     COURTROOMS TABLE SECTION - START
@@ -64,12 +64,6 @@ class db_host:
 
     def get_courthearings(self):
         df = pd.read_sql_query("SELECT * FROM Courthearings", self.db, parse_dates={'date':'%d-%m-%Y'})
-        # WHERE
-        # date
-        # BETWEEN
-        # 20221201
-        # AND
-        # 20221231
         df['date'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
         df.sort_values('date', inplace=True, ascending=False)
         df.reset_index(drop=True, inplace=True)

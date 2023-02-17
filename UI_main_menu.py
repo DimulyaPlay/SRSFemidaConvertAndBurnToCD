@@ -33,13 +33,10 @@ class MainMenu(qtw.QMainWindow):
         self.mmenu.show()
 
     def open_cr_menu(self):
-        print('now new cr menu opened')
         Courtrooms_menu(self, self.sqlite)
 
     def open_cases_menu(self):
-        print('now new cases menu opened')
         Cases_menu(self, self.sqlite)
 
     def open_settings(self):
-        print('now new settings menu opened')
         Settings_menu(self, self.sqlite)

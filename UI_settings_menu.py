@@ -7,7 +7,6 @@ from Utils import *
 class Settings_menu(QtWidgets.QMainWindow):
     def __init__(self, root, sqlite):
         super(Settings_menu, self).__init__(parent=root)
-
         self.root = root
         self.sqlite = sqlite
         self.settings = sqlite.get_settings()
@@ -16,6 +15,7 @@ class Settings_menu(QtWidgets.QMainWindow):
         self.setFixedSize(539, 431)
         # MAIN TAB WIDGET
         self.tabWidget = QtWidgets.QTabWidget(self)
+        self.tabWidget.tabBarClicked.connect(self.apply_settings)
         self.tabWidget.setGeometry(QtCore.QRect(0, 0, 539, 431))
         self.tabWidget.setTabShape(QtWidgets.QTabWidget.Rounded)
         # CR TAB INIT
@@ -50,13 +50,31 @@ class Settings_menu(QtWidgets.QMainWindow):
         # EXTRA TAB INIT
         self.extra_tab = QtWidgets.QWidget()
         self.tabWidget.addTab(self.extra_tab, "Дополнительно")
+
         self.mp3_save_checkBox = QtWidgets.QCheckBox(self.extra_tab)
         self.mp3_save_checkBox.setGeometry(QtCore.QRect(10, 10, 231, 21))
         self.mp3_save_checkBox.setText("Конвертировать в MP3 при сборе записей")
         self.mp3_save_checkBox.setChecked(bool(int(self.settings['audio_convert'])))
-        self.mp3_save_path = QtWidgets.QLineEdit(self.extra_tab)
-        self.mp3_save_path.setGeometry(QtCore.QRect(10, 40, 231, 20))
-        self.mp3_save_path.setPlaceholderText("Папка для сохранения mp3")
+        # self.mp3_save_checkBox.clicked.connect(self.apply_settings)
+        labelServer = QtWidgets.QLabel(self.extra_tab)
+        labelServer.setText("Сетевая папка для чтения mp3 клиентом")
+        labelServer.setGeometry(QtCore.QRect(10, 40, 251, 20))
+        self.mp3_save_path_server = QtWidgets.QLineEdit(self.extra_tab)
+        self.mp3_save_path_server.setGeometry(QtCore.QRect(10, 60, 251, 20))
+        if self.settings['server_media_path'] == '':
+            self.mp3_save_path_server.setPlaceholderText(r"Пример: \\server\audio_db")
+        else:
+            self.mp3_save_path_server.setText(self.settings['server_media_path'])
+
+        labelClient = QtWidgets.QLabel(self.extra_tab)
+        labelClient.setText("Локальная папка для сохранения mp3 сервером")
+        labelClient.setGeometry(QtCore.QRect(10, 90, 251, 20))
+        self.mp3_save_path_client = QtWidgets.QLineEdit(self.extra_tab)
+        self.mp3_save_path_client.setGeometry(QtCore.QRect(10, 110, 251, 20))
+        if self.settings['client_media_path'] == '':
+            self.mp3_save_path_client.setPlaceholderText(r"Пример: C:\\femida_MP3_archive\audio_db")
+        else:
+            self.mp3_save_path_client.setText(self.settings['client_media_path'])
         self.show()
 
     def closeEvent(self, event):
@@ -123,6 +141,8 @@ class Settings_menu(QtWidgets.QMainWindow):
 
     def apply_settings(self):
         self.settings['audio_convert'] = int(self.mp3_save_checkBox.isChecked())
+        self.settings['server_media_path'] = self.mp3_save_path_server.text()
+        self.settings['client_media_path'] = self.mp3_save_path_client.text()
         sqlite.update_settings(self.settings)
 
 
