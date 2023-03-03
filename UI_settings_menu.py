@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 import os
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from Utils import *
+from datetime import datetime
+
 
 
 class Settings_menu(QtWidgets.QMainWindow):
@@ -27,7 +30,7 @@ class Settings_menu(QtWidgets.QMainWindow):
         self.removeCourtroomButton = QtWidgets.QPushButton(self.crooms_tab, clicked = lambda: self.remove_crroom())
         self.removeCourtroomButton.setGeometry(QtCore.QRect(125, 10, 171, 31))
         self.removeCourtroomButton.setText("Удалить выбранный зал")
-        self.startGatheringButton = QtWidgets.QPushButton(self.crooms_tab, clicked = lambda: gather_all())
+        self.startGatheringButton = QtWidgets.QPushButton(self.crooms_tab, clicked = lambda: self.startGatheringProcess())
         self.startGatheringButton.setGeometry(QtCore.QRect(351, 10, 171, 31))
         self.startGatheringButton.setText("Запустить сборщик записей")
         self.mylist_listWidget = QtWidgets.QListWidget(self.crooms_tab)
@@ -39,23 +42,46 @@ class Settings_menu(QtWidgets.QMainWindow):
             self.mylist_listWidget.addItem(row)
             self.cr_name_path_dict[row] = name
         # SCHDLE TAB INIT and text placeholder
+
         self.schedule_tab = QtWidgets.QWidget()
-        self.tabWidget.addTab(self.schedule_tab, "Расписание")
-        self.label = QtWidgets.QLabel(self.schedule_tab)
-        self.label.setGeometry(QtCore.QRect(10, 10, 801, 53))
-        self.label.setText("В разработке\n"
-                             "\n"
-                             "Сбор записей можно осуществлять в автоматическом режиме, \n"
-                             "создав задачу в планировщике windows на запуск программы с параметром \'-gather\'.")
+        self.tabWidget.addTab(self.schedule_tab, "Запуск сканирования")
+
+        self.spinBox_period = QtWidgets.QSpinBox(self.schedule_tab)
+        self.spinBox_period.setGeometry(QtCore.QRect(481, 10, 41, 20))
+        self.spinBox_period.setValue(3)
+
+        font = QtGui.QFont()
+        font.setPointSize(10)
+        self.spinBox_period.setFont(font)
+        self.spinBox_period.setMinimum(1)
+        self.label_period = QtWidgets.QLabel(self.schedule_tab)
+        self.label_period.setGeometry(QtCore.QRect(290, 10, 171, 21))
+        self.label_period.setFont(font)
+        self.label_period.setText("Частота сканирования, мин")
+        self.pushButton_start = QtWidgets.QPushButton(self.schedule_tab, clicked = lambda:self.start_worker_scan())
+        self.pushButton_start.setGeometry(QtCore.QRect(290, 40, 241, 41))
+        self.pushButton_start.setFont(font)
+        self.pushButton_start.setText("Запустить сканирование")
+        self.pushButton_stop = QtWidgets.QPushButton(self.schedule_tab, clicked = lambda:self.stop_worker_scan())
+        self.pushButton_stop.setGeometry(QtCore.QRect(290, 90, 241, 41))
+        self.pushButton_stop.setFont(font)
+        self.pushButton_stop.setText("Остановить сканирование")
+        self.label_status = QtWidgets.QLabel(self.schedule_tab)
+        self.label_status.setGeometry(QtCore.QRect(300, 140, 231, 41))
+        self.label_status.setFont(font)
+        self.label_status.setText("Текущий статус: ОСТАНОВЛЕНО")
+        self.plainTextEdit_logger = QtWidgets.QPlainTextEdit(self.schedule_tab)
+        self.plainTextEdit_logger.setGeometry(QtCore.QRect(10, 190, 511, 211))
+        self.plainTextEdit_logger.setReadOnly(True)
+        self.plainTextEdit_logger.appendPlainText('Разработка: Краснокамский суд ПК, Дмитрий Соснин, 2023. github.com/dimulyaplay')
+
         # EXTRA TAB INIT
         self.extra_tab = QtWidgets.QWidget()
         self.tabWidget.addTab(self.extra_tab, "Дополнительно")
-
         self.mp3_save_checkBox = QtWidgets.QCheckBox(self.extra_tab)
         self.mp3_save_checkBox.setGeometry(QtCore.QRect(10, 10, 231, 21))
         self.mp3_save_checkBox.setText("Конвертировать в MP3 при сборе записей")
         self.mp3_save_checkBox.setChecked(bool(int(self.settings['audio_convert'])))
-        # self.mp3_save_checkBox.clicked.connect(self.apply_settings)
         labelServer = QtWidgets.QLabel(self.extra_tab)
         labelServer.setText("Сетевая папка для чтения mp3 клиентом")
         labelServer.setGeometry(QtCore.QRect(10, 40, 251, 20))
@@ -145,5 +171,41 @@ class Settings_menu(QtWidgets.QMainWindow):
         self.settings['client_media_path'] = self.mp3_save_path_client.text()
         sqlite.update_settings(self.settings)
 
+    def start_worker_scan(self):
+        self.pushButton_stop.setDisabled(False)
+        self.pushButton_start.setDisabled(True)
+        self.thread = QThread()
+        self.worker = Worker(self.spinBox_period.value())
+        self.worker.moveToThread(self.thread)
+        self.worker.add_string_to_log.connect(self.addLogRow)
+        self.thread.started.connect(self.worker.run)
+        self.thread.start()
+
+    def stop_worker_scan(self):
+        try:
+            self.worker._Running = False
+            self.thread.terminate()
+        except:
+            pass
+        self.addLogRow('Сканирование было остановлено пользователем.')
+        self.pushButton_start.setDisabled(False)
+        self.pushButton_stop.setDisabled(True)
+
+    def addLogRow(self, line):
+        self.plainTextEdit_logger.appendPlainText(line)
 
 
+class Worker(QThread):
+    def __init__(self, sleeptimemins):
+        super().__init__()
+        self._Running = True
+        self.sleeptime = sleeptimemins*60
+
+    add_string_to_log = pyqtSignal(str)
+
+    def run(self):
+        self.add_string_to_log.emit(f'{ctime()} - Сканирование запущено')
+        while self._Running:
+            gather_all(self.add_string_to_log)
+            sleep(self.sleeptime)
+        self.exit(0)

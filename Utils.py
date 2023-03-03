@@ -11,10 +11,11 @@ import soundfile as sf
 import clr
 from db_utilities import *
 from errors import *
+from datetime import datetime
 
 current_path = os.getcwd()
-clr.AddReference(current_path+'\\csburnermodule\\CDBurnerModule.dll')
-from CDBurnerModule import CDBurner
+# clr.AddReference(current_path+'\\csburnermodule\\CDBurnerModule.dll')
+# from CDBurnerModule import CDBurner
 
 
 def get_server_path():
@@ -28,6 +29,7 @@ dp_path = current_path+'\\courtrooms.db' if '-server_mode' in sys.argv else get_
 sqlite = db_host(dp_path)
 AudioSegment.converter = current_path+"\\ffmpeg.exe"
 mp3player = current_path + '\\foobar2000\\foobar2000.exe'
+cdburnerxp = current_path + '\\CDBurnerXP\\cdbxpcmd.exe'
 settings = sqlite.get_settings()
 current_media_path = settings['server_media_path'] if '-server_mode' in sys.argv else settings['client_media_path']
 
@@ -45,14 +47,24 @@ def wait_for_rom_ready(drive):
     return
 
 
-def burn_mp3_files_to_disk(filelist, drive=0):
-    wait_for_rom_ready(drive)
-    CDBurner.BurnFiles(filelist, drive, True)
-    print('successfully writed')
+# def burn_mp3_files_to_disk(filelist, drive=0):
+#     wait_for_rom_ready(drive)
+#     CDBurner.BurnFiles(filelist, drive, True)
+#     print('successfully writed')
 
 
 def open_mp3(mp3path):
     subprocess.Popen(mp3player+' '+fr'"{mp3path}"', shell=False)
+
+
+def write_to_cd(mp3paths):
+    if not mp3paths:
+        return
+    filestr = ''
+    for mp3 in mp3paths:
+        filestr += fr'"{current_media_path+mp3}" '
+    print(cdburnerxp+' '+fr'--burn-data -device:0 {filestr}-name:{ctime().split(" ")[0]}')
+    subprocess.Popen(cdburnerxp+' '+fr'--burn-data -device:0 -file[\]:"C:\Outlook_files\audio_db\Зал 4\Case #4$2F17-13$2F2023 from 19-01-2023.mp3" -name:{ctime().split(" ")[0]} -eject', shell=False)
 
 
 def gather_new_names_and_paths_from_cr(cr_name):
@@ -122,20 +134,20 @@ def gather_from_courtroom(cr_name, settings):
             print(case,' not added')
 
 
-def gather_all():
+def gather_all(emitter):
     """
     main gather function for walk over all courtrooms in db
     :return:
     """
     cr_dict = sqlite.get_courtrooms_dict()
     settings = sqlite.get_settings()
-    print('start gathering from', len(cr_dict), 'courtrooms')
+    emitter.emit(f'start gathering from {len(cr_dict)} courtrooms')
     for name, path in cr_dict.items():
-        print('gathering from', name)
+        emitter.emit(f'gathering from {name}')
         gather_from_courtroom(name, settings)
-        print('gathering from',name, 'complete')
+        emitter.emit(f'gathering from {name} complete')
     sqlite.db.commit()
-    print('gathering successfully completed')
+    emitter.emit(f'{ctime()} - gathering successfully completed')
 
 
 def concat_audio_by_time(audio_filepaths, outmp3, normalize_volume = False):
@@ -186,3 +198,7 @@ def concat_audio_by_time(audio_filepaths, outmp3, normalize_volume = False):
 def set_to_target_level(sound, target_level):
     difference = target_level - sound.dBFS
     return sound.apply_gain(difference)
+
+
+def ctime():
+    return datetime.today().strftime("%Y-%m-%d %H:%M:%S")

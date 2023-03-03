@@ -28,12 +28,12 @@ class Courtrooms_menu(QtWidgets.QMainWindow):
 
         self.labelChosenCount = QtWidgets.QLabel(self.centralwidget)
         self.labelChosenCount.setGeometry(QtCore.QRect(290, 10, 180, 21))
-        self.labelChosenCount.setFrameShape(QtWidgets.QFrame.StyledPanel)
         self.labelChosenCount.setText("Выбрано для записи: 0 файлов")
 
         self.pushButtonStartBurning = QtWidgets.QPushButton(self.centralwidget)
         self.pushButtonStartBurning.setGeometry(QtCore.QRect(583, 10, 91, 23))
         self.pushButtonStartBurning.setText("Начать запись")
+        self.pushButtonStartBurning.clicked.connect(lambda: write_to_cd(self.cases_to_burn))
 
         self.tableWidget = QtWidgets.QTableWidget(self.centralwidget)
         headerh = self.tableWidget.horizontalHeader()
@@ -47,7 +47,7 @@ class Courtrooms_menu(QtWidgets.QMainWindow):
         self.tableWidget.setColumnCount(5)
         itemCase = QtWidgets.QTableWidgetItem("№ Дела")
         self.tableWidget.setHorizontalHeaderItem(0, itemCase)
-        self.tableWidget.setColumnWidth(0,228)
+        self.tableWidget.setColumnWidth(0,227)
         itemDate = QtWidgets.QTableWidgetItem("Дата")
         self.tableWidget.setHorizontalHeaderItem(1, itemDate)
         self.tableWidget.setColumnWidth(1, 90)
@@ -66,6 +66,16 @@ class Courtrooms_menu(QtWidgets.QMainWindow):
         self.show()
 
     def refill_table(self):
+        def add_remove_to_list(btn, mp3path):
+            if not mp3path == '':
+                if mp3path in self.cases_to_burn:
+                    self.cases_to_burn.remove(mp3path)
+                    btn.setText('Добавить в список')
+                    self.labelChosenCount.setText(f'Выбрано для записи: {len(self.cases_to_burn)} файлов')
+                else:
+                    self.cases_to_burn.append(mp3path)
+                    btn.setText('Убрать из списка')
+                    self.labelChosenCount.setText(f'Выбрано для записи: {len(self.cases_to_burn)} файлов')
         self.tableWidget.setRowCount(0)
         current_cr = self.comboBoxCourtrooms.currentText()
         current_period = self.comboBoxPeriods.currentText()
@@ -76,6 +86,7 @@ class Courtrooms_menu(QtWidgets.QMainWindow):
             self.tableWidget.setItem(idx, 0, case)
 
             date = QtWidgets.QTableWidgetItem(row['date'].strftime('%d-%m-%Y'))
+            date.setTextAlignment(QtCore.Qt.AlignHCenter)
             self.tableWidget.setItem(idx, 1, date)
 
             if row["mp3duration"] != '':
@@ -84,18 +95,16 @@ class Courtrooms_menu(QtWidgets.QMainWindow):
                                                  clicked=lambda state, e=current_media_path + row['mp3path']: open_mp3(
                                                      e))
                 self.tableWidget.setCellWidget(idx, 3, btn_cell)
+                btn_add_remove = QtWidgets.QPushButton('Добавить в список')
+                btn_add_remove.clicked.connect(
+                    lambda state, b=btn_add_remove, e=row['mp3path']: add_remove_to_list(b, e))
+                self.tableWidget.setCellWidget(idx, 4, btn_add_remove)
             else:
                 duration_text = 'нет mp3'
             duration = QtWidgets.QTableWidgetItem(duration_text)
+            duration.setTextAlignment(QtCore.Qt.AlignHCenter)
             self.tableWidget.setItem(idx, 2, duration)
 
-
-            # btn_add_remove = customtkinter.CTkButton(self.ch_frame_buttons, text='ДОБАВИТЬ ДЛЯ ЗАПИСИ',
-            #                                          font=('roboto', 14), state=state)
-            # btn_add_remove.configure(command=lambda b=btn_add_remove, e=row['mp3path']: add_remove_to_list(b, e))
-            # if row['mp3path'] in self.cases_to_burn:
-            #     btn_add_remove.configure(fg_color='red', hover_color='darkred', text=' В СПИСКЕ ДЛЯ ЗАПИСИ ')
-            # btn_add_remove.grid(padx=5, pady=5, column=1, row=idx, sticky='e')
 
 
     def closeEvent(self, event):
