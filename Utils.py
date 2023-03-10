@@ -8,14 +8,11 @@ from time import sleep
 import tempfile
 from pydub import AudioSegment
 import soundfile as sf
-import clr
 from db_utilities import *
 from errors import *
 from datetime import datetime
 
 current_path = os.getcwd()
-# clr.AddReference(current_path+'\\csburnermodule\\CDBurnerModule.dll')
-# from CDBurnerModule import CDBurner
 
 
 def get_server_path():
@@ -34,25 +31,6 @@ settings = sqlite.get_settings()
 current_media_path = settings['server_media_path'] if '-server_mode' in sys.argv else settings['client_media_path']
 
 
-def wait_for_rom_ready(drive):
-    """
-    Listening for the dvdrom is ready for burning
-    :return:
-    """
-    status_media = CDBurner.IsDriveReady(drive)
-    while status_media != 0:
-        print('waiting for disk in drive', drive)
-        sleep(1)
-        status_media = CDBurner.IsDriveReady(drive)
-    return
-
-
-# def burn_mp3_files_to_disk(filelist, drive=0):
-#     wait_for_rom_ready(drive)
-#     CDBurner.BurnFiles(filelist, drive, True)
-#     print('successfully writed')
-
-
 def open_mp3(mp3path):
     subprocess.Popen(mp3player+' '+fr'"{mp3path}"', shell=False)
 
@@ -62,9 +40,10 @@ def write_to_cd(mp3paths):
         return
     filestr = ''
     for mp3 in mp3paths:
-        filestr += fr'"{current_media_path+mp3}" '
-    print(cdburnerxp+' '+fr'--burn-data -device:0 {filestr}-name:{ctime().split(" ")[0]}')
-    subprocess.Popen(cdburnerxp+' '+fr'--burn-data -device:0 -file[\]:"C:\Outlook_files\audio_db\Зал 4\Case #4$2F17-13$2F2023 from 19-01-2023.mp3" -name:{ctime().split(" ")[0]} -eject', shell=False)
+        filestr += fr'-file[\]:"{current_media_path+mp3}" '
+    print(cdburnerxp+' '+fr'--burn-data -device:0 {filestr} -close -eject')
+    sdburnerout = subprocess.Popen(cdburnerxp+' '+fr'--burn-data -tao -import -device:0 {filestr}-eject', shell=False, stdout=subprocess.PIPE)
+    return sdburnerout
 
 
 def gather_new_names_and_paths_from_cr(cr_name):

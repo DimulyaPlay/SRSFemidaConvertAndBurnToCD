@@ -6,7 +6,6 @@ from Utils import *
 from datetime import datetime
 
 
-
 class Settings_menu(QtWidgets.QMainWindow):
     def __init__(self, root, sqlite):
         super(Settings_menu, self).__init__(parent=root)

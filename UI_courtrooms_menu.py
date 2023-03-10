@@ -1,6 +1,8 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
 from Utils import *
 import datetime
+from UI_write_to_cd_progress_bar import Progress_window
 
 
 class Courtrooms_menu(QtWidgets.QMainWindow):
@@ -33,7 +35,7 @@ class Courtrooms_menu(QtWidgets.QMainWindow):
         self.pushButtonStartBurning = QtWidgets.QPushButton(self.centralwidget)
         self.pushButtonStartBurning.setGeometry(QtCore.QRect(583, 10, 91, 23))
         self.pushButtonStartBurning.setText("Начать запись")
-        self.pushButtonStartBurning.clicked.connect(lambda: write_to_cd(self.cases_to_burn))
+        self.pushButtonStartBurning.clicked.connect(lambda: self.initiate_burning(self.cases_to_burn))
 
         self.tableWidget = QtWidgets.QTableWidget(self.centralwidget)
         headerh = self.tableWidget.horizontalHeader()
@@ -105,21 +107,10 @@ class Courtrooms_menu(QtWidgets.QMainWindow):
             duration.setTextAlignment(QtCore.Qt.AlignHCenter)
             self.tableWidget.setItem(idx, 2, duration)
 
-
-
     def closeEvent(self, event):
         self.root.show()
         self.hide()
         event.ignore()
 
-    def write_to_disk(self):
-        print(self.cases_to_burn)
-        if len(self.cases_to_burn) == 0:
-            print('nothing to write')
-            return
-        # burn_mp3_files_to_disk(self.cases_to_burn)
-        self.cases_to_burn = []
-        self.count_to_burn_lb.configure(text=f'ВЫБРАНО ДЛЯ ЗАПИСИ: 0')
-        self.create_ch_table(self.cr_list[0])
-        return
-
+    def initiate_burning(self, list_files):
+        Progress_window(self, list_files)
