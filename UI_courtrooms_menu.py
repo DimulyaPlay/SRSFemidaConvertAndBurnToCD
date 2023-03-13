@@ -1,7 +1,5 @@
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
+from PyQt5 import QtCore, QtWidgets
 from Utils import *
-import datetime
 from UI_write_to_cd_progress_bar import Progress_window
 
 
@@ -97,7 +95,7 @@ class Courtrooms_menu(QtWidgets.QMainWindow):
                                                  clicked=lambda state, e=current_media_path + row['mp3path']: open_mp3(
                                                      e))
                 self.tableWidget.setCellWidget(idx, 3, btn_cell)
-                btn_add_remove = QtWidgets.QPushButton('Добавить в список')
+                btn_add_remove = QtWidgets.QPushButton('Добавить в список' if row['mp3path'] not in self.cases_to_burn else 'Убрать из списка')
                 btn_add_remove.clicked.connect(
                     lambda state, b=btn_add_remove, e=row['mp3path']: add_remove_to_list(b, e))
                 self.tableWidget.setCellWidget(idx, 4, btn_add_remove)
@@ -113,4 +111,7 @@ class Courtrooms_menu(QtWidgets.QMainWindow):
         event.ignore()
 
     def initiate_burning(self, list_files):
-        Progress_window(self, list_files)
+        if list_files:
+            Progress_window(self, list_files)
+        else:
+            popup_msg('Ошибка', "Должна быть выбрана хотя бы одна запись")

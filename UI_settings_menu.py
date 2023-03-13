@@ -3,7 +3,6 @@ import os
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from Utils import *
-from datetime import datetime
 
 
 class Settings_menu(QtWidgets.QMainWindow):
@@ -139,7 +138,7 @@ class Settings_menu(QtWidgets.QMainWindow):
                     result_name = 'Неудача'
                     result_text = f'Зал не был добавлен. {errorcode[res]}'
                     print(f'New courtroom {name, path} not added')
-                QtWidgets.QMessageBox.about(self, result_name, result_text)
+                    popup_msg(result_name, result_text)
                 addCourtroom.close()
                 row = f'{name}\n{path}'
                 self.mylist_listWidget.addItem(row)

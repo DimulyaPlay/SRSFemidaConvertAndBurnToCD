@@ -1,13 +1,13 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot
 from Utils import *
+from errors import *
 
 
 class Worker(QThread):
-    def __init__(self, file_list, root):
+    def __init__(self, file_list):
         super().__init__()
         self.file_list = file_list
-        self.root = root
     intReady = pyqtSignal(int)
     strReady = pyqtSignal(str)
 
@@ -15,18 +15,17 @@ class Worker(QThread):
     def run(self):
         self.strReady.emit('Подготовка к записи.')
         sdburnerout = write_to_cd(self.file_list)
-        while True:
+        finished = False
+        while not finished:
             line = sdburnerout.stdout.readline()
             line2 = line.decode().replace('\n', '').replace('\r', '')
             self.strReady.emit('Идет запись, подождите.')
             if line2.endswith('%'):
                 self.strReady.emit('Идет запись, подождите.')
                 self.intReady.emit(int(line2[:-1]))
-            self.strReady.emit(fr'{line}')
             if not line:
                 break
-        self.root.close()
-        self.quit()
+        self.strReady.emit('Запись успешно завершена!')
 
 
 class Progress_window(QtWidgets.QDialog):
@@ -53,7 +52,7 @@ class Progress_window(QtWidgets.QDialog):
     def start_worker(self):
         self.show()
         self.thread = QThread()
-        self.worker = Worker(self.list_to_write, self)
+        self.worker = Worker(self.list_to_write)
         self.worker.moveToThread(self.thread)
         self.worker.intReady.connect(self.setPbarValue)
         self.worker.strReady.connect(self.setLabelText)
