@@ -28,9 +28,9 @@ class Settings_menu(QtWidgets.QMainWindow):
         self.removeCourtroomButton = QtWidgets.QPushButton(self.crooms_tab, clicked = lambda: self.remove_crroom())
         self.removeCourtroomButton.setGeometry(QtCore.QRect(125, 10, 171, 31))
         self.removeCourtroomButton.setText("Удалить выбранный зал")
-        self.startGatheringButton = QtWidgets.QPushButton(self.crooms_tab, clicked = lambda: self.startGatheringProcess())
-        self.startGatheringButton.setGeometry(QtCore.QRect(351, 10, 171, 31))
-        self.startGatheringButton.setText("Запустить сборщик записей")
+        # self.startGatheringButton = QtWidgets.QPushButton(self.crooms_tab, clicked = lambda: self.startGatheringProcess())
+        # self.startGatheringButton.setGeometry(QtCore.QRect(351, 10, 171, 31))
+        # self.startGatheringButton.setText("Запустить сборщик записей")
         self.mylist_listWidget = QtWidgets.QListWidget(self.crooms_tab)
         self.mylist_listWidget.setGeometry(QtCore.QRect(10, 50, 511, 351))
         self.cr_name_path_dict = {}
@@ -71,7 +71,7 @@ class Settings_menu(QtWidgets.QMainWindow):
         self.plainTextEdit_logger = QtWidgets.QPlainTextEdit(self.schedule_tab)
         self.plainTextEdit_logger.setGeometry(QtCore.QRect(10, 190, 511, 211))
         self.plainTextEdit_logger.setReadOnly(True)
-        self.plainTextEdit_logger.appendPlainText('Разработка: Краснокамский суд ПК, Дмитрий Соснин, 2023. github.com/dimulyaplay')
+        self.plainTextEdit_logger.appendPlainText('SRS Femida НЕВСПИН - Неофициальный вспомогательный инструментарий. \nРазработка: Краснокамский суд ПК, Дмитрий Соснин, 2023. github.com/dimulyaplay')
 
         # EXTRA TAB INIT
         self.extra_tab = QtWidgets.QWidget()
@@ -99,7 +99,6 @@ class Settings_menu(QtWidgets.QMainWindow):
             self.mp3_save_path_client.setPlaceholderText(r"Пример: C:\\femida_MP3_archive\audio_db")
         else:
             self.mp3_save_path_client.setText(self.settings['client_media_path'])
-        self.show()
 
     def closeEvent(self, event):
         self.apply_settings()

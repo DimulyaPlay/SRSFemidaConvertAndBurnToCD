@@ -76,11 +76,17 @@ class db_host:
         df.reset_index(drop=True, inplace=True)
         return df
 
-    def get_courthearings_by_courtroom_and_date(self, cr_name, period):
-        df = pd.read_sql_query(f"SELECT * FROM Courthearings WHERE courtroomname = '{cr_name}'", self.db, parse_dates={'date': '%d-%m-%Y'})
-        # df['date'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
+    def get_courthearings_by_prefix_courtroom_and_date(self, cr_name, period, case_prefix = None):
+        query = "SELECT * FROM Courthearings WHERE "
+        if cr_name is not None:
+            query += f"courtroomname = '{cr_name}' AND "
+        if case_prefix is not None:
+            query += f"Case LIKE '{case_prefix}%' AND "
         if period is not None:
-            df = df[df.date > datetime.datetime.now() - pd.to_timedelta(period)]
+            now_str = datetime.datetime.now().strftime('%Y-%m-%d')
+            query += f"sqldate >= date('{now_str}', '-{period} day') AND "
+        query = query[:-5]
+        df = pd.read_sql_query(query, self.db, parse_dates={'date': '%d-%m-%Y'})
         df.sort_values('date', inplace=True, ascending=False)
         df.reset_index(drop=True, inplace=True)
         return df
