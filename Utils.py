@@ -74,18 +74,27 @@ def gather_case_date_from_name(ch_name):
     return case, date
 
 
-def gather_from_courtroom(cr_name, settings):
+def gather_from_courtroom(cr_name, settings, new_folder_path=None):
     """
     gather new audio from one courtroom
+    :param new_folder_path: если путь дан, то импортируем только его
     :param settings: parameters
     :param cr_name: courtroomname
     :return:
     """
-    names_and_paths = gather_new_names_and_paths_from_cr(cr_name)
+    results = {}
+    if new_folder_path is None:
+        names_and_paths = gather_new_names_and_paths_from_cr(cr_name)
+    else:
+        if not sqlite.is_courhearing_in_table(os.path.basename(new_folder_path)+'/'+cr_name):
+            names_and_paths = [[os.path.basename(new_folder_path), new_folder_path]]
+        else:
+            print('already in table')
+            results[os.path.basename(new_folder_path)] = 1
+            return results
     convert_audio = settings['audio_convert']
     if not os.path.exists(f'{current_media_path}\\{cr_name}\\'):
         os.mkdir(f'{current_media_path}\\{cr_name}\\')
-    print('found', len(names_and_paths), 'records in', cr_name)
     for name, path in names_and_paths:
         case, date = gather_case_date_from_name(name)
         if convert_audio == "1" and current_media_path != '':
@@ -109,25 +118,47 @@ def gather_from_courtroom(cr_name, settings):
                                       mp3_path=mp3_path_public,
                                       mp3_duration=duration, sqldate=sqldate, many=True)
         if res == 0:
-            print(case, ' added')
+            results[name] = 0
         else:
-            print(case, ' not added')
+            results[name] = 1
+    print(results)
+    return results
 
 
-def gather_all(emitter):
+def gather_all(emitter, new_folder_path = None):
     """
     main gather function for walk over all courtrooms in db
     :return:
     """
     cr_dict = sqlite.get_courtrooms_dict()
     settings = sqlite.get_settings()
-    emitter.emit(f'start gathering from {len(cr_dict)} courtrooms')
-    for name, path in cr_dict.items():
-        emitter.emit(f'gathering from {name}')
-        gather_from_courtroom(name, settings)
-        emitter.emit(f'gathering from {name} complete')
+    if new_folder_path is None:
+        emitter.emit(f'start gathering from {len(cr_dict)} courtrooms')
+        for name, path in cr_dict.items():
+            emitter.emit(f'gathering from {name}')
+            res = gather_from_courtroom(name, settings)
+            if res:
+                emitter.emit('Результаты:')
+                for key, value in res.items():
+                    if value > 0:
+                        emitter.emit('НЕ добавлен '+key)
+                    else:
+                        emitter.emit('Добавлен ' + key)
+            emitter.emit(f'gathering from {name} complete')
+    else:
+        for name, path in cr_dict.items():
+            if os.path.dirname(new_folder_path) == path:
+                emitter.emit(f'Найдена новая запись {os.path.basename(new_folder_path)} в {name}')
+                res = gather_from_courtroom(name, settings, new_folder_path)
+                if res:
+                    emitter.emit('Результаты:')
+                    for key, value in res.items():
+                        if value > 0:
+                            emitter.emit('НЕ добавлен ' + key)
+                        else:
+                            emitter.emit('Добавлен ' + key)
     sqlite.db.commit()
-    emitter.emit(f'{ctime()} - gathering successfully completed')
+    emitter.emit(f'{ctime()} - gathering completed')
 
 
 def concat_audio_by_time(audio_filepaths, outmp3, normalize_volume=False):
@@ -160,16 +191,13 @@ def concat_audio_by_time(audio_filepaths, outmp3, normalize_volume=False):
         else:
             audio_filepaths_by_time[audio_time_suffix] = sound1
     out_sound = None
-    print('last combining')
     for key, value in dict(sorted(audio_filepaths_by_time.items())).items():
         if out_sound:
             out_sound += value
         else:
             out_sound = value
     duration = int(len(out_sound) / 1000.0)
-    print('saving file with duration', duration)
     out_sound.export(outmp3)
-    print('clearing temp')
     for tf in tempfile_list_for_delete:
         os.unlink(tf)
     return duration

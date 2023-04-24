@@ -71,10 +71,15 @@ class db_host:
 
     def get_courthearings_by_courtroom(self, cr_name):
         df = pd.read_sql_query(f"SELECT * FROM Courthearings WHERE courtroomname = '{cr_name}'", self.db, parse_dates={'date':'%d-%m-%Y'})
-        # df['date'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
         df.sort_values('date', inplace=True, ascending=False)
         df.reset_index(drop=True, inplace=True)
         return df
+
+    def is_courhearing_in_table(self, foldername_courtroomname):
+        self.cursor.execute(f"SELECT * FROM Courthearings WHERE foldername_cr = ?", (foldername_courtroomname,))
+        res = self.cursor.fetchall()
+        print(foldername_courtroomname, res)
+        return True if len(res) > 0 else False
 
     def get_courthearings_by_prefix_courtroom_and_date(self, cr_name, period, case_prefix = None):
         query = "SELECT * FROM Courthearings WHERE "

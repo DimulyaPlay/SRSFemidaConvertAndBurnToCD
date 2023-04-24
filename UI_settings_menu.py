@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
 import os
+import traceback
+import time
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from Utils import *
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+from queue import Queue
 
 
 class Settings_menu(QtWidgets.QMainWindow):
@@ -28,9 +33,6 @@ class Settings_menu(QtWidgets.QMainWindow):
         self.removeCourtroomButton = QtWidgets.QPushButton(self.crooms_tab, clicked = lambda: self.remove_crroom())
         self.removeCourtroomButton.setGeometry(QtCore.QRect(125, 10, 171, 31))
         self.removeCourtroomButton.setText("Удалить выбранный зал")
-        # self.startGatheringButton = QtWidgets.QPushButton(self.crooms_tab, clicked = lambda: self.startGatheringProcess())
-        # self.startGatheringButton.setGeometry(QtCore.QRect(351, 10, 171, 31))
-        # self.startGatheringButton.setText("Запустить сборщик записей")
         self.mylist_listWidget = QtWidgets.QListWidget(self.crooms_tab)
         self.mylist_listWidget.setGeometry(QtCore.QRect(10, 50, 511, 351))
         self.cr_name_path_dict = {}
@@ -53,9 +55,11 @@ class Settings_menu(QtWidgets.QMainWindow):
         self.spinBox_period.setFont(font)
         self.spinBox_period.setMinimum(1)
         self.label_period = QtWidgets.QLabel(self.schedule_tab)
-        self.label_period.setGeometry(QtCore.QRect(290, 10, 171, 21))
+        self.label_period.setGeometry(QtCore.QRect(290, 10, 173, 21))
         self.label_period.setFont(font)
-        self.label_period.setText("Частота сканирования, мин")
+        self.label_period.setText("Задержка сканирования, мин")
+        self.label_period.setToolTip('через какой промежуток времени начать обрабатывать папку\n с момента ее создания(фемида не мгновенно '
+                                     'копирует \n все файлы сз на сервер необходимо некоторое время,\n чтобы все скопировалось в папку и обработалось корректно)')
         self.pushButton_start = QtWidgets.QPushButton(self.schedule_tab, clicked = lambda:self.start_worker_scan())
         self.pushButton_start.setGeometry(QtCore.QRect(290, 40, 241, 41))
         self.pushButton_start.setFont(font)
@@ -169,40 +173,93 @@ class Settings_menu(QtWidgets.QMainWindow):
         sqlite.update_settings(self.settings)
 
     def start_worker_scan(self):
-        self.pushButton_stop.setDisabled(False)
-        self.pushButton_start.setDisabled(True)
-        self.thread = QThread()
-        self.worker = Worker(self.spinBox_period.value())
-        self.worker.moveToThread(self.thread)
-        self.worker.add_string_to_log.connect(self.addLogRow)
-        self.thread.started.connect(self.worker.run)
-        self.thread.start()
+        try:
+            self.monitor_threads = dict()
+            self.handle_queue = Queue()
+            self.pushButton_stop.setDisabled(False)
+            self.pushButton_start.setDisabled(True)
+            self.label_status.setText("Текущий статус: РАБОТАЕТ")
+            for name, path in self.courtrooms.items():
+                self.monitor_threads[name] = MonitorThread(path, self.handle_queue)
+                self.monitor_threads[name].start()
+                self.addLogRow(f'{name} monitoring started.')
+            self.handler_thread = Worker(self.handle_queue)
+            self.handler_thread.add_string_to_log.connect(self.addLogRow)
+            self.handler_thread.start()
+        except:
+            traceback.print_exc()
+
+    def handle_new_folder(self, folder_path):
+        # Обрабатывайте новую папку здесь
+        self.addLogRow(f"New case: {folder_path}")
+        self.handle_queue.put(folder_path)
 
     def stop_worker_scan(self):
-        try:
-            self.worker._Running = False
-            self.thread.terminate()
-        except:
-            pass
+        for name in list(self.courtrooms.keys()):
+            try:
+                self.monitor_threads[name]._Running = False
+            except:
+                pass
         self.addLogRow('Сканирование было остановлено пользователем.')
         self.pushButton_start.setDisabled(False)
         self.pushButton_stop.setDisabled(True)
+        self.label_status.setText("Текущий статус: ОСТАНОВЛЕНО")
 
     def addLogRow(self, line):
         self.plainTextEdit_logger.appendPlainText(line)
 
 
+class MonitorThread(QThread):
+
+    class NewFolderHandler(FileSystemEventHandler):
+        def __init__(self, parent=None):
+            super().__init__()
+            self.parent = parent
+
+        def on_created(self, event):
+            if event.is_directory:
+                if os.path.basename(event.src_path).startswith('Case #'):
+                    self.parent.queue.put(event.src_path)
+
+    def __init__(self, folder_path, queue):
+        super().__init__()
+        self.folder_path = folder_path
+        self.queue = queue
+        self._Running = True
+
+    def run(self):
+        try:
+            event_handler = self.NewFolderHandler(self)
+            observer = Observer()
+            observer.schedule(event_handler, path=self.folder_path, recursive=False)
+            observer.start()
+            while self._Running:
+                time.sleep(1)
+            observer.stop()
+            observer.join()
+        except Exception as e:
+            traceback.print_exc()
+            print(e)
+
+
 class Worker(QThread):
-    def __init__(self, sleeptimemins):
+    def __init__(self, queue):
         super().__init__()
         self._Running = True
-        self.sleeptime = sleeptimemins*60
+        self.queue = queue
 
     add_string_to_log = pyqtSignal(str)
 
     def run(self):
         self.add_string_to_log.emit(f'{ctime()} - Сканирование запущено')
-        while self._Running:
-            gather_all(self.add_string_to_log)
-            sleep(self.sleeptime)
-        self.exit(0)
+        while True:
+            try:
+                fp = self.queue.get()
+                if fp is None:
+                    break
+                try:
+                    gather_all(self.add_string_to_log, new_folder_path=fp)
+                except Exception as e:
+                    self.add_string_to_log.emit(f'Ошибка обработки {fp}, {e}')
+            except Exception as e:
+                self.add_string_to_log.emit(f'Ошибка обработки, {e}')
