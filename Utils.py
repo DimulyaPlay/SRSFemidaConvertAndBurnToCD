@@ -20,13 +20,13 @@ def get_server_path():
     return server_db_path
 
 
-dp_path = current_path + '\\courtrooms.db' if '-server_mode' in sys.argv else get_server_path()
+dp_path = get_server_path()
 sqlite = db_host(dp_path)
 AudioSegment.converter = current_path + "\\ffmpeg.exe"
 mp3player = current_path + '\\foobar2000\\foobar2000.exe'
 cdburnerxp = current_path + '\\CDBurnerXP\\cdbxpcmd.exe'
 settings = sqlite.get_settings()
-current_media_path = settings['server_media_path'] if '-server_mode' in sys.argv else settings['client_media_path']
+current_media_path = settings['server_media_path']
 
 
 def open_mp3(mp3path):
@@ -113,7 +113,7 @@ def gather_from_courtroom(cr_name, settings, new_folder_path=None):
             mp3_path_public = ''
             duration = ''
         sqldate = date.split('-')
-        sqldate = sqldate[2] + sqldate[1] + sqldate[0]
+        sqldate = sqldate[2] + '-' + sqldate[1] + '-' + sqldate[0]
         res = sqlite.add_courthearing(foldername=name, case=case, date=date, courtroomname=cr_name,
                                       mp3_path=mp3_path_public,
                                       mp3_duration=duration, sqldate=sqldate, many=True)
@@ -210,37 +210,3 @@ def set_to_target_level(sound, target_level):
 
 def ctime():
     return datetime.today().strftime("%Y-%m-%d %H:%M:%S")
-
-
-class CheckableComboBox(QComboBox):
-    def __init__(self):
-        super().__init__()
-        self._changed = False
-
-        self.view().pressed.connect(self.handleItemPressed)
-
-    def setItemChecked(self, index, checked=False):
-        item = self.model().item(index, self.modelColumn())  # QStandardItem object
-
-        if checked:
-            item.setCheckState(Qt.Checked)
-        else:
-            item.setCheckState(Qt.Unchecked)
-
-    def handleItemPressed(self, index):
-        item = self.model().itemFromIndex(index)
-
-        if item.checkState() == Qt.Checked:
-            item.setCheckState(Qt.Unchecked)
-        else:
-            item.setCheckState(Qt.Checked)
-        self._changed = True
-
-    def hidePopup(self):
-        if not self._changed:
-            super().hidePopup()
-        self._changed = False
-
-    def itemChecked(self, index):
-        item = self.model().item(index, self.modelColumn())
-        return item.checkState() == Qt.Checked

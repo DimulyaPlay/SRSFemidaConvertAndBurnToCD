@@ -1,10 +1,14 @@
 import sys
 import os
+import traceback
 from glob import glob
 from PyQt5 import QtWidgets, uic
 from Utils import gather_all, sqlite
 from UI_courtrooms_menu import Courtrooms_menu
 from UI_settings_menu import Settings_menu
+from UI_search_menu import Cases_menu
+
+#pyinstaller --noconfirm --onedir --console --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/ffmpeg.exe;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/ffprobe.exe;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/readme.txt;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/server_db_path.txt;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/foobar2000;foobar2000/" --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/CDBurnerXP;CDBurnerXP/" --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/assets;assets/"  "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/StartProgram.py"
 
 if '-server_mode' in sys.argv:
     admin_mode = True
@@ -26,16 +30,25 @@ class MainMenu(QtWidgets.QMainWindow):
         self.admin_mode = admin_mode
 
     def open_cr_menu(self):
-        crm = Courtrooms_menu(self, self.sqlite)
-        crm.show()
+        try:
+            crm = Courtrooms_menu(self, self.sqlite)
+            crm.show()
+        except:
+            traceback.print_exc()
 
     def open_cases_menu(self):
-        cm = Cases_menu(self, self.sqlite)
-        cm.show()
+        try:
+            cm = Cases_menu(self, self.sqlite)
+            cm.show()
+        except:
+            traceback.print_exc()
 
     def open_settings(self):
-        sm = Settings_menu(self, self.sqlite)
-        sm.show()
+        try:
+            sm = Settings_menu(self, self.sqlite)
+            sm.show()
+        except:
+            traceback.print_exc()
 
 
 if __name__ == '__main__':

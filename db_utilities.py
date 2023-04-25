@@ -81,17 +81,21 @@ class db_host:
         print(foldername_courtroomname, res)
         return True if len(res) > 0 else False
 
-    def get_courthearings_by_prefix_courtroom_and_date(self, cr_name, period, case_prefix = None):
-        query = "SELECT * FROM Courthearings WHERE "
+    def get_courthearings_by_prefix_courtroom_and_date(self, cr_name, from_to_date=None, period=None, case_prefix = None):
+        query = 'SELECT * FROM Courthearings WHERE '
+
         if cr_name is not None:
             query += f"courtroomname = '{cr_name}' AND "
         if case_prefix is not None:
-            query += f"Case LIKE '{case_prefix}%' AND "
+            query += "case LIKE ? AND "
+            params = (case_prefix.replace("'", "''") + '%',)
         if period is not None:
             now_str = datetime.datetime.now().strftime('%Y-%m-%d')
             query += f"sqldate >= date('{now_str}', '-{period} day') AND "
+        if from_to_date is not None:
+            query += f"sqldate BETWEEN '{from_to_date[0]}' AND '{from_to_date[1]}' AND "
         query = query[:-5]
-        df = pd.read_sql_query(query, self.db, parse_dates={'date': '%d-%m-%Y'})
+        df = pd.read_sql_query(query,  self.db, params=params, parse_dates={'date': '%d-%m-%Y'})
         df.sort_values('date', inplace=True, ascending=False)
         df.reset_index(drop=True, inplace=True)
         return df
