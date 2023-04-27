@@ -3,7 +3,7 @@ import os
 import traceback
 from glob import glob
 from PyQt5 import QtWidgets, uic
-from Utils import gather_all, sqlite
+from Utils import gather_path, sqlite
 from UI_courtrooms_menu import Courtrooms_menu
 from UI_settings_menu import Settings_menu
 from UI_search_menu import Cases_menu

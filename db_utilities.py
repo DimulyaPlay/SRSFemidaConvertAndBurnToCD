@@ -3,6 +3,7 @@ import pandas as pd
 import datetime
 from errors import *
 
+print(sqlite3.sqlite_version)
 
 class db_host:
     def __init__(self, db_filepath):
@@ -62,19 +63,6 @@ class db_host:
         except Exception as e:
             return e
 
-    def get_courthearings(self):
-        df = pd.read_sql_query("SELECT * FROM Courthearings", self.db, parse_dates={'date':'%d-%m-%Y'})
-        df['date'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
-        df.sort_values('date', inplace=True, ascending=False)
-        df.reset_index(drop=True, inplace=True)
-        return df
-
-    def get_courthearings_by_courtroom(self, cr_name):
-        df = pd.read_sql_query(f"SELECT * FROM Courthearings WHERE courtroomname = '{cr_name}'", self.db, parse_dates={'date':'%d-%m-%Y'})
-        df.sort_values('date', inplace=True, ascending=False)
-        df.reset_index(drop=True, inplace=True)
-        return df
-
     def is_courhearing_in_table(self, foldername_courtroomname):
         self.cursor.execute(f"SELECT * FROM Courthearings WHERE foldername_cr = ?", (foldername_courtroomname,))
         res = self.cursor.fetchall()
@@ -83,19 +71,17 @@ class db_host:
 
     def get_courthearings_by_prefix_courtroom_and_date(self, cr_name, from_to_date=None, period=None, case_prefix = None):
         query = 'SELECT * FROM Courthearings WHERE '
-
         if cr_name is not None:
             query += f"courtroomname = '{cr_name}' AND "
-        if case_prefix is not None:
-            query += "case LIKE ? AND "
-            params = (case_prefix.replace("'", "''") + '%',)
         if period is not None:
             now_str = datetime.datetime.now().strftime('%Y-%m-%d')
             query += f"sqldate >= date('{now_str}', '-{period} day') AND "
         if from_to_date is not None:
             query += f"sqldate BETWEEN '{from_to_date[0]}' AND '{from_to_date[1]}' AND "
         query = query[:-5]
-        df = pd.read_sql_query(query,  self.db, params=params, parse_dates={'date': '%d-%m-%Y'})
+        df = pd.read_sql_query(query,  self.db, parse_dates={'date': '%d-%m-%Y'})
+        if case_prefix is not None:
+            df = df[df['case'].str.startswith(case_prefix)]
         df.sort_values('date', inplace=True, ascending=False)
         df.reset_index(drop=True, inplace=True)
         return df

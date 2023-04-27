@@ -45,24 +45,24 @@ def write_to_cd(mp3paths):
     return sdburnerout
 
 
-def gather_new_names_and_paths_from_cr(cr_name):
-    """
-    gather new courtheatings from folder into courthearings table
-    :param cr_name:
-    :return: list of lists with names and fpaths of new items in courtroom folder
-    """
-    current_ch_df = sqlite.get_courthearings_by_courtroom(cr_name)
-    target_dir = sqlite.get_courtrooms_dict()[cr_name]
-    current_ch_set = set(current_ch_df['foldername'])
-    new_ch_set = set(os.listdir(target_dir))
-    new_ch_set.difference_update(current_ch_set)
-    diff_names_list = list(new_ch_set)
-    diff_namesnpaths_list = [[i, os.path.join(target_dir, i)] for i in diff_names_list if
-                             os.path.isdir(os.path.join(target_dir, i))]
-    return diff_namesnpaths_list
+# def gather_new_names_and_paths_from_cr(cr_name):
+#     """
+#     gather new courtheatings from folder into courthearings table
+#     :param cr_name:
+#     :return: list of lists with names and fpaths of new items in courtroom folder
+#     """
+#     current_ch_df = sqlite.get_courthearings_by_courtroom(cr_name)
+#     target_dir = sqlite.get_courtrooms_dict()[cr_name]
+#     current_ch_set = set(current_ch_df['foldername'])
+#     new_ch_set = set(os.listdir(target_dir))
+#     new_ch_set.difference_update(current_ch_set)
+#     diff_names_list = list(new_ch_set)
+#     diff_namesnpaths_list = [[i, os.path.join(target_dir, i)] for i in diff_names_list if
+#                              os.path.isdir(os.path.join(target_dir, i))]
+#     return diff_namesnpaths_list
 
 
-def gather_case_date_from_name(ch_name):
+def get_case_date_from_name(ch_name):
     """
     split foldername into case and date
     :param ch_name: foldername
@@ -82,81 +82,53 @@ def gather_from_courtroom(cr_name, settings, new_folder_path=None):
     :param cr_name: courtroomname
     :return:
     """
-    results = {}
-    if new_folder_path is None:
-        names_and_paths = gather_new_names_and_paths_from_cr(cr_name)
-    else:
-        if not sqlite.is_courhearing_in_table(os.path.basename(new_folder_path)+'/'+cr_name):
-            names_and_paths = [[os.path.basename(new_folder_path), new_folder_path]]
-        else:
-            print('already in table')
-            results[os.path.basename(new_folder_path)] = 1
-            return results
     convert_audio = settings['audio_convert']
-    if not os.path.exists(f'{current_media_path}\\{cr_name}\\'):
-        os.mkdir(f'{current_media_path}\\{cr_name}\\')
-    for name, path in names_and_paths:
-        case, date = gather_case_date_from_name(name)
-        if convert_audio == "1" and current_media_path != '':
-            try:
-                filepaths = glob.glob(path + r'\*\*')
-                mp3_path = f'{current_media_path}\\{cr_name}\\{name}.mp3'
-                mp3_path_public = f'\\{cr_name}\\{name}.mp3'
-                duration = concat_audio_by_time(filepaths, mp3_path)
-            except Exception as e:
-                print('error on converting audio', name, e)
-                mp3_path = ''
-                duration = ''
-                pass
-        else:
+    if not sqlite.is_courhearing_in_table(os.path.basename(new_folder_path)+'/'+cr_name):
+        foldername, folderpath = os.path.basename(new_folder_path), new_folder_path
+        case, date = get_case_date_from_name(foldername)
+    else:
+        return 1
+    if convert_audio == "1" and current_media_path != '':
+        try:
+            if not os.path.exists(f'{current_media_path}\\{cr_name}\\'):
+                os.mkdir(f'{current_media_path}\\{cr_name}\\')
+            filepaths = glob.glob(folderpath + r'\*\*')
+            mp3_path = f'{current_media_path}\\{cr_name}\\{foldername}.mp3'
+            mp3_path_public = f'\\{cr_name}\\{foldername}.mp3'
+            duration = concat_audio_by_time(filepaths, mp3_path)
+        except Exception as e:
             mp3_path = ''
-            mp3_path_public = ''
             duration = ''
-        sqldate = date.split('-')
-        sqldate = sqldate[2] + '-' + sqldate[1] + '-' + sqldate[0]
-        res = sqlite.add_courthearing(foldername=name, case=case, date=date, courtroomname=cr_name,
-                                      mp3_path=mp3_path_public,
-                                      mp3_duration=duration, sqldate=sqldate, many=True)
-        if res == 0:
-            results[name] = 0
-        else:
-            results[name] = 1
-    print(results)
-    return results
+    else:
+        mp3_path = ''
+        mp3_path_public = ''
+        duration = ''
+    sqldate = date.split('-')
+    sqldate = sqldate[2] + '-' + sqldate[1] + '-' + sqldate[0]
+    res = sqlite.add_courthearing(foldername=foldername, case=case, date=date, courtroomname=cr_name,
+                                  mp3_path=mp3_path_public,
+                                  mp3_duration=duration, sqldate=sqldate, many=True)
+    if res == 0:
+        return 0
+    else:
+        return 3
 
 
-def gather_all(emitter, new_folder_path = None):
+def gather_path(emitter, new_folder_path):
     """
     main gather function for walk over all courtrooms in db
     :return:
     """
     cr_dict = sqlite.get_courtrooms_dict()
     settings = sqlite.get_settings()
-    if new_folder_path is None:
-        emitter.emit(f'start gathering from {len(cr_dict)} courtrooms')
-        for name, path in cr_dict.items():
-            emitter.emit(f'gathering from {name}')
-            res = gather_from_courtroom(name, settings)
-            if res:
-                emitter.emit('Результаты:')
-                for key, value in res.items():
-                    if value > 0:
-                        emitter.emit('НЕ добавлен '+key)
-                    else:
-                        emitter.emit('Добавлен ' + key)
-            emitter.emit(f'gathering from {name} complete')
-    else:
-        for name, path in cr_dict.items():
-            if os.path.dirname(new_folder_path) == path:
-                emitter.emit(f'Найдена новая запись {os.path.basename(new_folder_path)} в {name}')
-                res = gather_from_courtroom(name, settings, new_folder_path)
-                if res:
-                    emitter.emit('Результаты:')
-                    for key, value in res.items():
-                        if value > 0:
-                            emitter.emit('НЕ добавлен ' + key)
-                        else:
-                            emitter.emit('Добавлен ' + key)
+    for name, path in cr_dict.items():
+        if os.path.dirname(new_folder_path) == path:
+            emitter.emit(f'Найдена новая запись {os.path.basename(new_folder_path)} в {name}')
+            res = gather_from_courtroom(name, settings, new_folder_path)
+            if res > 0:
+                emitter.emit('НЕ добавлен ' + name)
+            else:
+                emitter.emit('Добавлен ' + name)
     sqlite.db.commit()
     emitter.emit(f'{ctime()} - gathering completed')
 

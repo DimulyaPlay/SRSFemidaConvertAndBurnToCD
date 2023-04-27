@@ -258,7 +258,7 @@ class Worker(QThread):
                 if fp is None:
                     break
                 try:
-                    gather_all(self.add_string_to_log, new_folder_path=fp)
+                    gather_path(self.add_string_to_log, new_folder_path=fp)
                 except Exception as e:
                     self.add_string_to_log.emit(f'Ошибка обработки {fp}, {e}')
             except Exception as e:
