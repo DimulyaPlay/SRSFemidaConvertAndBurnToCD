@@ -15,6 +15,7 @@ if '-server_mode' in sys.argv:
 else:
     admin_mode = False
 
+
 class MainMenu(QtWidgets.QMainWindow):
     def __init__(self, sqlite, admin_mode=False):
         super().__init__()

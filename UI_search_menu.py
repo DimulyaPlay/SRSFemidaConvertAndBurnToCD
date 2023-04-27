@@ -58,12 +58,13 @@ class Cases_menu(QtWidgets.QMainWindow):
             for idx, row in data_for_table.iterrows():
                 case = row['case'].replace('$2F', '/')
                 date = row['date'].strftime('%d-%m-%Y')
+                cr = row['courtroomname']
                 if row["mp3duration"] != '':
                     duration_text = str(int(int(row["mp3duration"])/60))
                 else:
                     duration_text = 'нет mp3'
                 mp3path = settings['server_media_path'] + row['mp3path']
-                file_widget = FileWidget(case, date,duration_text, mp3path, self.cases_to_burn, self.labelChosenCount)
+                file_widget = FileWidget(case, cr, date,duration_text, mp3path, self.cases_to_burn, self.labelChosenCount)
                 self.file_widgets_list.append(file_widget)
             for file_widget in self.file_widgets_list:
                 item = QtWidgets.QListWidgetItem()
@@ -89,9 +90,10 @@ class Cases_menu(QtWidgets.QMainWindow):
 
 class FileWidget(QtWidgets.QWidget):
     # Объект формирования строки виджетов для размещения в qlistwidget
-    def __init__(self, case, date, mp3duration, mp3path, cases_to_burn, num_cases):
+    def __init__(self, case, cr, date, mp3duration, mp3path, cases_to_burn, num_cases):
         super().__init__()
         self.case, self.date, self.mp3path, self.mp3duration = case, date, mp3path, mp3duration
+        self.cr = cr
         self.cases_to_burn = cases_to_burn
         self.num_cases = num_cases
         layout = QtWidgets.QHBoxLayout()
@@ -101,7 +103,10 @@ class FileWidget(QtWidgets.QWidget):
         self.label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         layout.addWidget(self.label)
         layout.addStretch(1)
-
+        self.label_cr = QtWidgets.QLabel(cr)
+        self.label_cr.setFixedWidth(100)
+        self.label_cr.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+        layout.addWidget(self.label_cr)
         self.label_date = QtWidgets.QLabel(date)
         self.label_date.setFixedWidth(80)
         self.label_date.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
@@ -139,6 +144,10 @@ class HatWidget(QtWidgets.QWidget):
         self.label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         layout.addWidget(self.label)
         layout.addStretch(1)
+        self.label_cr = QtWidgets.QLabel('Зал')
+        self.label_cr.setFixedWidth(100)
+        self.label_cr.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+        layout.addWidget(self.label_cr)
         self.label_date = QtWidgets.QLabel('Дата')
         self.label_date.setFixedWidth(80)
         self.label_date.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
