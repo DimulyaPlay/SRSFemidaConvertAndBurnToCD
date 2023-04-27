@@ -3,7 +3,6 @@ import pandas as pd
 import datetime
 from errors import *
 
-print(sqlite3.sqlite_version)
 
 class db_host:
     def __init__(self, db_filepath):
@@ -66,7 +65,6 @@ class db_host:
     def is_courhearing_in_table(self, foldername_courtroomname):
         self.cursor.execute(f"SELECT * FROM Courthearings WHERE foldername_cr = ?", (foldername_courtroomname,))
         res = self.cursor.fetchall()
-        print(foldername_courtroomname, res)
         return True if len(res) > 0 else False
 
     def get_courthearings_by_prefix_courtroom_and_date(self, cr_name, from_to_date=None, period=None, case_prefix = None):

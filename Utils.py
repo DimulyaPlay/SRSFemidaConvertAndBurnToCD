@@ -97,6 +97,7 @@ def gather_from_courtroom(cr_name, settings, new_folder_path=None):
             mp3_path_public = f'\\{cr_name}\\{foldername}.mp3'
             duration = concat_audio_by_time(filepaths, mp3_path)
         except Exception as e:
+            print(e)
             mp3_path = ''
             duration = ''
     else:
@@ -126,11 +127,11 @@ def gather_path(emitter, new_folder_path):
             emitter.emit(f'Найдена новая запись {os.path.basename(new_folder_path)} в {name}')
             res = gather_from_courtroom(name, settings, new_folder_path)
             if res > 0:
-                emitter.emit('НЕ добавлен ' + name)
+                emitter.emit('НЕ добавлен ' + os.path.basename(new_folder_path))
             else:
-                emitter.emit('Добавлен ' + name)
+                emitter.emit('Добавлен ' + os.path.basename(new_folder_path))
     sqlite.db.commit()
-    emitter.emit(f'{ctime()} - gathering completed')
+    emitter.emit(f'{ctime()} - Сбор завершен')
 
 
 def concat_audio_by_time(audio_filepaths, outmp3, normalize_volume=False):

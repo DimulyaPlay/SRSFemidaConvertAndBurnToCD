@@ -15,7 +15,6 @@ if '-server_mode' in sys.argv:
 else:
     admin_mode = False
 
-
 class MainMenu(QtWidgets.QMainWindow):
     def __init__(self, sqlite, admin_mode=False):
         super().__init__()
@@ -27,7 +26,8 @@ class MainMenu(QtWidgets.QMainWindow):
         pushButton_courtrooms.clicked.connect(lambda: self.open_cr_menu())
         pushButton_settings = self.findChild(QtWidgets.QPushButton, 'pushButton_settings')
         pushButton_settings.clicked.connect(lambda: self.open_settings())
-        self.admin_mode = admin_mode
+        if not admin_mode:
+            pushButton_settings.setDisabled(True)
 
     def open_cr_menu(self):
         try:
@@ -53,6 +53,6 @@ class MainMenu(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    mm = MainMenu(sqlite=sqlite, admin_mode=True)
+    mm = MainMenu(sqlite=sqlite, admin_mode=admin_mode)
     mm.show()
     sys.exit(app.exec_())

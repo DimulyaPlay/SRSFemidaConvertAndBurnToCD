@@ -48,7 +48,7 @@ class Settings_menu(QtWidgets.QMainWindow):
 
         self.spinBox_period = QtWidgets.QSpinBox(self.schedule_tab)
         self.spinBox_period.setGeometry(QtCore.QRect(481, 10, 41, 20))
-        self.spinBox_period.setValue(3)
+        self.spinBox_period.setValue(2)
 
         font = QtGui.QFont()
         font.setPointSize(10)
@@ -174,25 +174,21 @@ class Settings_menu(QtWidgets.QMainWindow):
 
     def start_worker_scan(self):
         try:
+            period = self.spinBox_period.value()*60
             self.monitor_threads = dict()
             self.handle_queue = Queue()
             self.pushButton_stop.setDisabled(False)
             self.pushButton_start.setDisabled(True)
             self.label_status.setText("Текущий статус: РАБОТАЕТ")
-            for name, path in self.courtrooms.items():
+            for name, path in sqlite.get_courtrooms_dict().items():
                 self.monitor_threads[name] = MonitorThread(path, self.handle_queue)
                 self.monitor_threads[name].start()
-                self.addLogRow(f'{name} monitoring started.')
-            self.handler_thread = Worker(self.handle_queue)
+                self.addLogRow(f'{name} мониторинг запущен.')
+            self.handler_thread = Worker(self.handle_queue, period)
             self.handler_thread.add_string_to_log.connect(self.addLogRow)
             self.handler_thread.start()
         except:
             traceback.print_exc()
-
-    def handle_new_folder(self, folder_path):
-        # Обрабатывайте новую папку здесь
-        self.addLogRow(f"New case: {folder_path}")
-        self.handle_queue.put(folder_path)
 
     def stop_worker_scan(self):
         for name in list(self.courtrooms.keys()):
@@ -243,10 +239,11 @@ class MonitorThread(QThread):
 
 
 class Worker(QThread):
-    def __init__(self, queue):
+    def __init__(self, queue, period):
         super().__init__()
         self._Running = True
         self.queue = queue
+        self.period = period
 
     add_string_to_log = pyqtSignal(str)
 
@@ -258,6 +255,7 @@ class Worker(QThread):
                 if fp is None:
                     break
                 try:
+                    time.sleep(self.period)
                     gather_path(self.add_string_to_log, new_folder_path=fp)
                 except Exception as e:
                     self.add_string_to_log.emit(f'Ошибка обработки {fp}, {e}')

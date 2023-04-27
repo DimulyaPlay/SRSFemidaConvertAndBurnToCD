@@ -43,7 +43,7 @@ class Courtrooms_menu(QtWidgets.QMainWindow):
             current_cr = self.comboBoxCourtrooms.currentText()
             current_period = self.comboBoxPeriods.currentText()
             data_for_table = self.sqlite.get_courthearings_by_prefix_courtroom_and_date(current_cr,
-                                                                                        self.periods_list_to_query[
+                                                                                        period = self.periods_list_to_query[
                                                                                             current_period])
             self.file_widgets_list = []
             for idx, row in data_for_table.iterrows():
