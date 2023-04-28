@@ -48,7 +48,7 @@ class Settings_menu(QtWidgets.QMainWindow):
 
         self.spinBox_period = QtWidgets.QSpinBox(self.schedule_tab)
         self.spinBox_period.setGeometry(QtCore.QRect(481, 10, 41, 20))
-        self.spinBox_period.setValue(2)
+        self.spinBox_period.setValue(3)
 
         font = QtGui.QFont()
         font.setPointSize(10)

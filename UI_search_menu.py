@@ -80,12 +80,14 @@ class Cases_menu(QtWidgets.QMainWindow):
         event.ignore()
 
     def start_burning(self):
-        self.cases_to_burn = []
-        for item in self.list_widget.selectedItems():
-
-            Progress_window(self, self.cases_to_burn)
-        else:
-            popup_msg('Ошибка', "Должна быть выбрана хотя бы одна запись")
+        try:
+            if self.cases_to_burn:
+                print('writing to disk ', self.cases_to_burn)
+                Progress_window(self, self.cases_to_burn)
+            else:
+                popup_msg('Ошибка', "Должна быть выбрана хотя бы одна запись")
+        except:
+            traceback.print_exc()
 
 
 class FileWidget(QtWidgets.QWidget):
@@ -128,8 +130,13 @@ class FileWidget(QtWidgets.QWidget):
     def add_remove(self, mp3path):
         if self.check_box.isChecked():
             self.cases_to_burn.append(mp3path)
+            print('checker')
+            print(self.cases_to_burn)
         else:
             self.cases_to_burn.remove(mp3path)
+            print('unchecker')
+            print(self.cases_to_burn)
+
         self.num_cases.setText(f'Выбрано: {len(self.cases_to_burn)}')
 
 

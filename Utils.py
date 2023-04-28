@@ -3,6 +3,9 @@ import os
 import subprocess
 import sys
 import tempfile
+import traceback
+
+import eyed3
 from pydub import AudioSegment
 import soundfile as sf
 from db_utilities import *
@@ -38,7 +41,7 @@ def write_to_cd(mp3paths):
         return
     filestr = ''
     for mp3 in mp3paths:
-        filestr += fr'-file[\]:"{current_media_path + mp3}" '
+        filestr += fr'-file[\]:"{mp3}" '
     print(cdburnerxp + ' ' + fr'--burn-data -device:0 {filestr} -close -eject')
     sdburnerout = subprocess.Popen(cdburnerxp + ' ' + fr'--burn-data -tao -import -device:0 {filestr}-eject',
                                    shell=False, stdout=subprocess.PIPE)
@@ -97,7 +100,7 @@ def gather_from_courtroom(cr_name, settings, new_folder_path=None):
             mp3_path_public = f'\\{cr_name}\\{foldername}.mp3'
             duration = concat_audio_by_time(filepaths, mp3_path)
         except Exception as e:
-            print(e)
+            traceback.print_exc()
             mp3_path = ''
             duration = ''
     else:
@@ -143,36 +146,50 @@ def concat_audio_by_time(audio_filepaths, outmp3, normalize_volume=False):
     :return: dict{time:audiosegment}
     """
     audio_filepaths = [i for i in audio_filepaths if i.endswith('.WAV')]
+    print('files for concat: ', audio_filepaths)
+    print('saving to: ', outmp3)
     audio_filepaths_by_time = {}
     tempfile_list_for_delete = []
-    num_paths = len(audio_filepaths)
     for idx, audio_path in enumerate(audio_filepaths):
-        print('working on', os.path.basename(audio_path), idx + 1, "of", num_paths)
-        audio_time_suffix = os.path.basename(audio_path).split('.')[0].split(' ')[-1]
-        data, sr = sf.read(audio_path)
-        sig, sr = sf.read(audio_path)
-        fd, outpath = tempfile.mkstemp('.wav')
-        tempfile_list_for_delete.append(outpath)
-        os.close(fd)
-        sf.write(outpath, sig, sr, format="wav", subtype='PCM_16')
-        sound1 = AudioSegment.from_wav(outpath)
-        if normalize_volume:
-            print('normalizing to', normalize_volume, 'Db')
-            sound1 = set_to_target_level(sound1, normalize_volume)
-        if audio_time_suffix in audio_filepaths_by_time.keys():
-            audio_filepaths_by_time[audio_time_suffix].overlay(sound1)
-        else:
-            audio_filepaths_by_time[audio_time_suffix] = sound1
-    out_sound = None
-    for key, value in dict(sorted(audio_filepaths_by_time.items())).items():
-        if out_sound:
-            out_sound += value
-        else:
-            out_sound = value
-    duration = int(len(out_sound) / 1000.0)
-    out_sound.export(outmp3)
-    for tf in tempfile_list_for_delete:
-        os.unlink(tf)
+        try:
+            audio_time_suffix = os.path.basename(audio_path).split('.')[0].split(' ')[-1]
+            data, sr = sf.read(audio_path)
+            sig, sr = sf.read(audio_path)
+            fd, outpath = tempfile.mkstemp('.wav')
+            tempfile_list_for_delete.append(outpath)
+            os.close(fd)
+            sf.write(outpath, sig, sr, format="wav", subtype='PCM_16')
+            sound1 = AudioSegment.from_wav(outpath)
+            if normalize_volume:
+                print('normalizing to', normalize_volume, 'Db')
+                sound1 = set_to_target_level(sound1, normalize_volume)
+            if audio_time_suffix in audio_filepaths_by_time.keys():
+                audio_filepaths_by_time[audio_time_suffix].overlay(sound1)
+            else:
+                audio_filepaths_by_time[audio_time_suffix] = sound1
+        except Exception as e:
+            traceback.print_exc()
+            return ''
+    try:
+        out_sound = None
+        for key, value in dict(sorted(audio_filepaths_by_time.items())).items():
+            if out_sound:
+                out_sound += value
+            else:
+                out_sound = value
+        duration = int(len(out_sound) / 1000.0)
+        out_sound.export(outmp3)
+        for tf in tempfile_list_for_delete:
+            os.unlink(tf)
+    except Exception as e:
+        traceback.print_exc()
+        return ''
+    checkfile = eyed3.load(outmp3)
+    if checkfile is None:
+        print('mp3 check fail')
+        return ''
+    else:
+        print('mp3 checked successfully')
     return duration
 
 
