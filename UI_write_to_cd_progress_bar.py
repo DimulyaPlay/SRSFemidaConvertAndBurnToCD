@@ -28,9 +28,9 @@ class Worker(QThread):
         self.strReady.emit('Запись успешно завершена!')
 
 
-class Progress_window(QtWidgets.QDialog):
+class ProgressWindow(QtWidgets.QDialog):
     def __init__(self, root, list_to_write):
-        super(Progress_window, self).__init__(parent=root)
+        super(ProgressWindow, self).__init__(parent=root)
         self.root = root
         self.list_to_write = list_to_write
         self.setWindowTitle("Запись на диск")

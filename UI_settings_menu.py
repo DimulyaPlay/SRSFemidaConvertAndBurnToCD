@@ -10,9 +10,9 @@ from watchdog.events import FileSystemEventHandler
 from queue import Queue
 
 
-class Settings_menu(QtWidgets.QMainWindow):
+class SettingsMenu(QtWidgets.QMainWindow):
     def __init__(self, root, sqlite):
-        super(Settings_menu, self).__init__(parent=root)
+        super(SettingsMenu, self).__init__(parent=root)
         self.root = root
         self.sqlite = sqlite
         self.settings = sqlite.get_settings()
@@ -58,8 +58,8 @@ class Settings_menu(QtWidgets.QMainWindow):
         self.label_period.setGeometry(QtCore.QRect(290, 10, 173, 21))
         self.label_period.setFont(font)
         self.label_period.setText("Задержка сканирования, мин")
-        self.label_period.setToolTip('через какой промежуток времени начать обрабатывать папку\n с момента ее создания(фемида не мгновенно '
-                                     'копирует \n все файлы сз на сервер необходимо некоторое время,\n чтобы все скопировалось в папку и обработалось корректно)')
+        self.label_period.setToolTip('Промежуток времени через который начинать обрабатывать папку\n с момента ее обнаружения(фемида не мгновенно '
+                                     'копирует \n все файлы сз на серверЮ необходимо некоторое время,\n чтобы все файлы скопировались в папку и обработались корректно)')
         self.pushButton_start = QtWidgets.QPushButton(self.schedule_tab, clicked = lambda:self.start_worker_scan())
         self.pushButton_start.setGeometry(QtCore.QRect(290, 40, 241, 41))
         self.pushButton_start.setFont(font)
@@ -84,9 +84,9 @@ class Settings_menu(QtWidgets.QMainWindow):
         self.mp3_save_checkBox.setGeometry(QtCore.QRect(10, 10, 231, 21))
         self.mp3_save_checkBox.setText("Конвертировать в MP3 при сборе записей")
         self.mp3_save_checkBox.setChecked(bool(int(self.settings['audio_convert'])))
-        labelServer = QtWidgets.QLabel(self.extra_tab)
-        labelServer.setText("Сетевая папка для чтения mp3 клиентом")
-        labelServer.setGeometry(QtCore.QRect(10, 40, 251, 20))
+        label_server = QtWidgets.QLabel(self.extra_tab)
+        label_server.setText("Сетевая папка для чтения mp3 клиентом")
+        label_server.setGeometry(QtCore.QRect(10, 40, 251, 20))
         self.mp3_save_path_server = QtWidgets.QLineEdit(self.extra_tab)
         self.mp3_save_path_server.setGeometry(QtCore.QRect(10, 60, 251, 20))
         if self.settings['server_media_path'] == '':
@@ -94,9 +94,9 @@ class Settings_menu(QtWidgets.QMainWindow):
         else:
             self.mp3_save_path_server.setText(self.settings['server_media_path'])
 
-        labelClient = QtWidgets.QLabel(self.extra_tab)
-        labelClient.setText("Локальная папка для сохранения mp3 сервером")
-        labelClient.setGeometry(QtCore.QRect(10, 90, 251, 20))
+        label_client = QtWidgets.QLabel(self.extra_tab)
+        label_client.setText("Локальная папка для сохранения mp3 сервером")
+        label_client.setGeometry(QtCore.QRect(10, 90, 251, 20))
         self.mp3_save_path_client = QtWidgets.QLineEdit(self.extra_tab)
         self.mp3_save_path_client.setGeometry(QtCore.QRect(10, 110, 251, 20))
         if self.settings['client_media_path'] == '':
@@ -111,25 +111,25 @@ class Settings_menu(QtWidgets.QMainWindow):
         event.ignore()
 
     def add_crroom(self):
-        addCourtroom = QtWidgets.QDialog(parent=self)
-        addCourtroom.setFixedSize(277, 91)
-        addCourtroom.setWindowTitle("Добавить зал")
-        crNameLine = QtWidgets.QLineEdit(addCourtroom)
-        crNameLine.setGeometry(QtCore.QRect(10, 10, 261, 20))
-        crNameLine.setPlaceholderText("Введите название, например: Зал 1")
-        crPathLine = QtWidgets.QLineEdit(addCourtroom)
-        crPathLine.setGeometry(QtCore.QRect(10, 40, 261, 20))
-        crPathLine.setPlaceholderText(r"Введите путь, например: С:\Залы\Зал 1")
-        saveCancelButton = QtWidgets.QDialogButtonBox(parent = addCourtroom, orientation = QtCore.Qt.Horizontal)
-        saveCancelButton.setGeometry(QtCore.QRect(60, 60, 161, 31))
-        saveCancelButton.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel | QtWidgets.QDialogButtonBox.Save)
-        saveCancelButton.accepted.connect(lambda: add_room_to_base())  # type: ignore
-        saveCancelButton.rejected.connect(addCourtroom.reject)  # type: ignore
-        addCourtroom.show()
+        add_courtroom = QtWidgets.QDialog(parent=self)
+        add_courtroom.setFixedSize(277, 91)
+        add_courtroom.setWindowTitle("Добавить зал")
+        cr_name_line = QtWidgets.QLineEdit(add_courtroom)
+        cr_name_line.setGeometry(QtCore.QRect(10, 10, 261, 20))
+        cr_name_line.setPlaceholderText("Введите название, например: Зал 1")
+        cr_path_line = QtWidgets.QLineEdit(add_courtroom)
+        cr_path_line.setGeometry(QtCore.QRect(10, 40, 261, 20))
+        cr_path_line.setPlaceholderText(r"Введите путь, например: С:\Залы\Зал 1")
+        save_cancel_button = QtWidgets.QDialogButtonBox(parent = add_courtroom, orientation = QtCore.Qt.Horizontal)
+        save_cancel_button.setGeometry(QtCore.QRect(60, 60, 161, 31))
+        save_cancel_button.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel | QtWidgets.QDialogButtonBox.Save)
+        save_cancel_button.accepted.connect(lambda: add_room_to_base())  # type: ignore
+        save_cancel_button.rejected.connect(add_courtroom.reject)  # type: ignore
+        add_courtroom.show()
 
         def add_room_to_base():
-            name = fr'{crNameLine.text()}'.strip()
-            path = fr'{crPathLine.text()}'
+            name = fr'{cr_name_line.text()}'.strip()
+            path = fr'{cr_path_line.text()}'
             if os.path.exists(path):
                 res = self.sqlite.add_courtroom(name, path)
                 if res == 0:
@@ -141,8 +141,8 @@ class Settings_menu(QtWidgets.QMainWindow):
                     result_name = 'Неудача'
                     result_text = f'Зал не был добавлен. {errorcode[res]}'
                     print(f'New courtroom {name, path} not added')
-                    popup_msg(result_name, result_text)
-                addCourtroom.close()
+                popup_msg(result_name, result_text)
+                add_courtroom.close()
                 row = f'{name}\n{path}'
                 self.mylist_listWidget.addItem(row)
                 self.cr_name_path_dict[row] = name
@@ -189,6 +189,7 @@ class Settings_menu(QtWidgets.QMainWindow):
             self.handler_thread.start()
         except:
             traceback.print_exc()
+            raise
 
     def stop_worker_scan(self):
         for name in list(self.courtrooms.keys()):

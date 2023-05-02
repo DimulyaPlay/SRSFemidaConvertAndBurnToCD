@@ -2,10 +2,10 @@ import traceback
 
 from PyQt5 import QtCore, QtWidgets, uic
 from Utils import *
-from UI_write_to_cd_progress_bar import Progress_window
+from UI_write_to_cd_progress_bar import ProgressWindow
 
 
-class Cases_menu(QtWidgets.QMainWindow):
+class CasesMenu(QtWidgets.QMainWindow):
     def __init__(self, root, sqlite):
         super().__init__(parent=None)
         uic.loadUi('assets/cases_menu.ui', self)
@@ -41,6 +41,7 @@ class Cases_menu(QtWidgets.QMainWindow):
             self.dateEdit_from.dateChanged.connect(self.refill_table)
         except:
             traceback.print_exc()
+            raise
         self.refill_table()
 
     def refill_table(self):
@@ -49,7 +50,6 @@ class Cases_menu(QtWidgets.QMainWindow):
             current_cr = self.comboBoxCourtrooms.currentText()
             if current_cr == 'Все':
                 current_cr = None
-            dd = QtWidgets.QDateEdit()
             date_from = self.dateEdit_from.date().toPyDate()
             date_to = self.dateEdit_to.date().toPyDate()
             case_prefix = self.lineEdit_case.text() if self.lineEdit_case.text() != '' else None
@@ -73,6 +73,7 @@ class Cases_menu(QtWidgets.QMainWindow):
                 self.list_widget.setItemWidget(item, file_widget)
         except:
             traceback.print_exc()
+            raise
 
     def closeEvent(self, event):
         self.root.show()
@@ -83,11 +84,12 @@ class Cases_menu(QtWidgets.QMainWindow):
         try:
             if self.cases_to_burn:
                 print('writing to disk ', self.cases_to_burn)
-                Progress_window(self, self.cases_to_burn)
+                ProgressWindow(self, self.cases_to_burn)
             else:
                 popup_msg('Ошибка', "Должна быть выбрана хотя бы одна запись")
         except:
             traceback.print_exc()
+            raise
 
 
 class FileWidget(QtWidgets.QWidget):

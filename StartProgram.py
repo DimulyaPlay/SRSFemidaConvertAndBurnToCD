@@ -4,11 +4,11 @@ import traceback
 from glob import glob
 from PyQt5 import QtWidgets, uic
 from Utils import gather_path, sqlite
-from UI_courtrooms_menu import Courtrooms_menu
-from UI_settings_menu import Settings_menu
-from UI_search_menu import Cases_menu
+from UI_courtrooms_menu import CourtroomsMenu
+from UI_settings_menu import SettingsMenu
+from UI_search_menu import CasesMenu
 
-#pyinstaller --noconfirm --onedir --console --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/ffmpeg.exe;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/ffprobe.exe;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/readme.txt;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/server_db_path.txt;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/foobar2000;foobar2000/" --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/CDBurnerXP;CDBurnerXP/" --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/assets;assets/"  "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/StartProgram.py"
+# pyinstaller --noconfirm --onedir --console --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/ffmpeg.exe;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/ffprobe.exe;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/readme.txt;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/server_db_path.txt;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/foobar2000;foobar2000/" --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/CDBurnerXP;CDBurnerXP/" --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/assets;assets/"  "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/StartProgram.py"
 
 if '-server_mode' in sys.argv:
     admin_mode = True
@@ -21,35 +21,38 @@ class MainMenu(QtWidgets.QMainWindow):
         super().__init__()
         self.sqlite = sqlite
         uic.loadUi('assets\\main_menu.ui', self)
-        pushButton_cases = self.findChild(QtWidgets.QPushButton, 'pushButton_cases')
-        pushButton_cases.clicked.connect(lambda: self.open_cases_menu())
-        pushButton_courtrooms = self.findChild(QtWidgets.QPushButton, 'pushButton_courtrooms')
-        pushButton_courtrooms.clicked.connect(lambda: self.open_cr_menu())
-        pushButton_settings = self.findChild(QtWidgets.QPushButton, 'pushButton_settings')
-        pushButton_settings.clicked.connect(lambda: self.open_settings())
+        pushbutton_cases = self.findChild(QtWidgets.QPushButton, 'pushButton_cases')
+        pushbutton_cases.clicked.connect(lambda: self.open_cases_menu())
+        pushbutton_courtrooms = self.findChild(QtWidgets.QPushButton, 'pushButton_courtrooms')
+        pushbutton_courtrooms.clicked.connect(lambda: self.open_cr_menu())
+        pushbutton_settings = self.findChild(QtWidgets.QPushButton, 'pushButton_settings')
+        pushbutton_settings.clicked.connect(lambda: self.open_settings())
         if not admin_mode:
-            pushButton_settings.setDisabled(True)
+            pushbutton_settings.setDisabled(True)
 
     def open_cr_menu(self):
         try:
-            crm = Courtrooms_menu(self, self.sqlite)
+            crm = CourtroomsMenu(self, self.sqlite)
             crm.show()
         except:
             traceback.print_exc()
+            raise
 
     def open_cases_menu(self):
         try:
-            cm = Cases_menu(self, self.sqlite)
+            cm = CasesMenu(self, self.sqlite)
             cm.show()
         except:
             traceback.print_exc()
+            raise
 
     def open_settings(self):
         try:
-            sm = Settings_menu(self, self.sqlite)
+            sm = SettingsMenu(self, self.sqlite)
             sm.show()
         except:
             traceback.print_exc()
+            raise
 
 
 if __name__ == '__main__':

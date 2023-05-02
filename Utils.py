@@ -48,21 +48,21 @@ def write_to_cd(mp3paths):
     return sdburnerout
 
 
-# def gather_new_names_and_paths_from_cr(cr_name):
-#     """
-#     gather new courtheatings from folder into courthearings table
-#     :param cr_name:
-#     :return: list of lists with names and fpaths of new items in courtroom folder
-#     """
-#     current_ch_df = sqlite.get_courthearings_by_courtroom(cr_name)
-#     target_dir = sqlite.get_courtrooms_dict()[cr_name]
-#     current_ch_set = set(current_ch_df['foldername'])
-#     new_ch_set = set(os.listdir(target_dir))
-#     new_ch_set.difference_update(current_ch_set)
-#     diff_names_list = list(new_ch_set)
-#     diff_namesnpaths_list = [[i, os.path.join(target_dir, i)] for i in diff_names_list if
-#                              os.path.isdir(os.path.join(target_dir, i))]
-#     return diff_namesnpaths_list
+def gather_new_names_and_paths_from_cr(cr_name):
+    """
+    gather new courtheatings from folder into courthearings table
+    :param cr_name:
+    :return: list of lists with names and fpaths of new items in courtroom folder
+    """
+    current_ch_df = sqlite.get_courthearings_by_courtroom(cr_name)
+    target_dir = sqlite.get_courtrooms_dict()[cr_name]
+    current_ch_set = set(current_ch_df['foldername'])
+    new_ch_set = set(os.listdir(target_dir))
+    new_ch_set.difference_update(current_ch_set)
+    diff_names_list = list(new_ch_set)
+    diff_namesnpaths_list = [[i, os.path.join(target_dir, i)] for i in diff_names_list if
+                             os.path.isdir(os.path.join(target_dir, i))]
+    return diff_namesnpaths_list
 
 
 def get_case_date_from_name(ch_name):
@@ -99,7 +99,7 @@ def gather_from_courtroom(cr_name, settings, new_folder_path=None):
             mp3_path = f'{current_media_path}\\{cr_name}\\{foldername}.mp3'
             mp3_path_public = f'\\{cr_name}\\{foldername}.mp3'
             duration = concat_audio_by_time(filepaths, mp3_path)
-        except Exception as e:
+        except Exception:
             traceback.print_exc()
             mp3_path = ''
             duration = ''
@@ -147,6 +147,9 @@ def concat_audio_by_time(audio_filepaths, outmp3, normalize_volume=False):
     """
     audio_filepaths = [i for i in audio_filepaths if i.endswith('.WAV')]
     print('files for concat: ', audio_filepaths)
+    if not audio_filepaths:
+        print('empty folder, cant create mp3')
+        return ''
     print('saving to: ', outmp3)
     audio_filepaths_by_time = {}
     tempfile_list_for_delete = []
@@ -167,7 +170,7 @@ def concat_audio_by_time(audio_filepaths, outmp3, normalize_volume=False):
                 audio_filepaths_by_time[audio_time_suffix].overlay(sound1)
             else:
                 audio_filepaths_by_time[audio_time_suffix] = sound1
-        except Exception as e:
+        except Exception:
             traceback.print_exc()
             return ''
     try:
@@ -181,7 +184,7 @@ def concat_audio_by_time(audio_filepaths, outmp3, normalize_volume=False):
         out_sound.export(outmp3)
         for tf in tempfile_list_for_delete:
             os.unlink(tf)
-    except Exception as e:
+    except Exception:
         traceback.print_exc()
         return ''
     checkfile = eyed3.load(outmp3)

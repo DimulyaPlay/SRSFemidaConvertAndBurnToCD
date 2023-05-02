@@ -62,6 +62,10 @@ class db_host:
         except Exception as e:
             return e
 
+    def remove_courthearing(self, foldername_courtroomname):
+        self.cursor.execute('DELETE FROM Courthearings WHERE foldername_cr = ?', (foldername_courtroomname,))
+        self.db.commit()
+
     def is_courhearing_in_table(self, foldername_courtroomname):
         self.cursor.execute(f"SELECT * FROM Courthearings WHERE foldername_cr = ?", (foldername_courtroomname,))
         res = self.cursor.fetchall()

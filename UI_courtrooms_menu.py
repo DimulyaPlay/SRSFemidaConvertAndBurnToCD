@@ -2,10 +2,10 @@ import traceback
 
 from PyQt5 import QtCore, QtWidgets, uic
 from Utils import *
-from UI_write_to_cd_progress_bar import Progress_window
+from UI_write_to_cd_progress_bar import ProgressWindow
 
 
-class Courtrooms_menu(QtWidgets.QMainWindow):
+class CourtroomsMenu(QtWidgets.QMainWindow):
     def __init__(self, root, sqlite):
         super().__init__(parent=None)
         uic.loadUi('assets/сourtrooms_menu.ui', self)
@@ -35,6 +35,7 @@ class Courtrooms_menu(QtWidgets.QMainWindow):
             self.hat_list_widget.setItemWidget(item, hat_widget)
         except:
             traceback.print_exc()
+            raise
         self.refill_table()
 
     def refill_table(self):
@@ -64,6 +65,7 @@ class Courtrooms_menu(QtWidgets.QMainWindow):
                 self.list_widget.setItemWidget(item, file_widget)
         except:
             traceback.print_exc()
+            raise
 
     def closeEvent(self, event):
         self.root.show()
@@ -71,10 +73,8 @@ class Courtrooms_menu(QtWidgets.QMainWindow):
         event.ignore()
 
     def start_burning(self):
-        self.cases_to_burn = []
-        for item in self.list_widget.selectedItems():
-
-            Progress_window(self, self.cases_to_burn)
+        if len(self.cases_to_burn) > 0:
+            ProgressWindow(self, self.cases_to_burn)
         else:
             popup_msg('Ошибка', "Должна быть выбрана хотя бы одна запись")
 
