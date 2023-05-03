@@ -176,17 +176,20 @@ class SettingsMenu(QtWidgets.QMainWindow):
         try:
             period = self.spinBox_period.value()*60
             self.monitor_threads = dict()
-            self.handle_queue = Queue()
+            self.converter_threads = dict()
+            self.queues = dict()
             self.pushButton_stop.setDisabled(False)
             self.pushButton_start.setDisabled(True)
             self.label_status.setText("Текущий статус: РАБОТАЕТ")
             for name, path in sqlite.get_courtrooms_dict().items():
-                self.monitor_threads[name] = MonitorThread(path, self.handle_queue)
+                self.queues[name] = Queue()
+                self.monitor_threads[name] = MonitorThread(path, self.queues[name])
                 self.monitor_threads[name].start()
                 self.addLogRow(f'{name} мониторинг запущен.')
-            self.handler_thread = Worker(self.handle_queue, period)
-            self.handler_thread.add_string_to_log.connect(self.addLogRow)
-            self.handler_thread.start()
+                self.converter_threads[name] = Worker(self.queues[name], period)
+                self.converter_threads[name].add_string_to_log.connect(self.addLogRow)
+                self.converter_threads[name].start()
+                self.addLogRow(f'{name} конвертер запущен.')
         except:
             traceback.print_exc()
             raise
@@ -232,6 +235,7 @@ class MonitorThread(QThread):
             observer.start()
             while self._Running:
                 time.sleep(1)
+            self.queue.put(None)
             observer.stop()
             observer.join()
         except Exception as e:
@@ -256,8 +260,24 @@ class Worker(QThread):
                 if fp is None:
                     break
                 try:
+                    self.add_string_to_log.emit(f'{ctime()} - Найдена новая запись {os.path.basename(fp)}, жду {self.period} секунд')
                     time.sleep(self.period)
-                    gather_path(self.add_string_to_log, new_folder_path=fp)
+                    res = gather_path(self.add_string_to_log, new_folder_path=fp)
+                    if res == 0:
+                        self.add_string_to_log.emit('Добавлен ' + os.path.basename(fp))
+                    elif res == 1:
+                        self.add_string_to_log.emit('НЕ добавлен ' + os.path.basename(fp) + ', путь уже существует')
+                    elif res == 2:
+                        self.add_string_to_log.emit('НЕ добавлен ' + os.path.basename(fp) + ', отсутствуют файлы в папке')
+                    elif res == 3:
+                        self.add_string_to_log.emit('НЕ добавлен ' + os.path.basename(fp) + ', ошибка конвертации')
+                    else:
+                        self.add_string_to_log.emit('НЕ добавлен ' + os.path.basename(fp) + ', ошибка sql')
+                    retries = 1
+                    while res == 2 and retries < 6:
+                        time.sleep(600)
+                        self.add_string_to_log.emit(f'{ctime()} - Найдена новая запись {os.path.basename(fp)}, попытка №{retries}')
+                        res = gather_path(self.add_string_to_log, new_folder_path=fp)
                 except Exception as e:
                     self.add_string_to_log.emit(f'Ошибка обработки {fp}, {e}')
             except Exception as e:

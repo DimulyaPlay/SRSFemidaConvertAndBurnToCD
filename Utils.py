@@ -4,7 +4,7 @@ import subprocess
 import sys
 import tempfile
 import traceback
-
+import time
 import eyed3
 from pydub import AudioSegment
 import soundfile as sf
@@ -12,6 +12,7 @@ from db_utilities import *
 from errors import *
 from datetime import datetime
 from PyQt5.QtWidgets import QComboBox
+from queue import Queue
 
 current_path = os.getcwd()
 
@@ -85,28 +86,24 @@ def gather_from_courtroom(cr_name, settings, new_folder_path=None):
     :param cr_name: courtroomname
     :return:
     """
-    convert_audio = settings['audio_convert']
     if not sqlite.is_courhearing_in_table(os.path.basename(new_folder_path)+'/'+cr_name):
         foldername, folderpath = os.path.basename(new_folder_path), new_folder_path
         case, date = get_case_date_from_name(foldername)
     else:
-        return 1
-    if convert_audio == "1" and current_media_path != '':
-        try:
-            if not os.path.exists(f'{current_media_path}\\{cr_name}\\'):
-                os.mkdir(f'{current_media_path}\\{cr_name}\\')
-            filepaths = glob.glob(folderpath + r'\*\*')
-            mp3_path = f'{current_media_path}\\{cr_name}\\{foldername}.mp3'
-            mp3_path_public = f'\\{cr_name}\\{foldername}.mp3'
-            duration = concat_audio_by_time(filepaths, mp3_path)
-        except Exception:
-            traceback.print_exc()
-            mp3_path = ''
-            duration = ''
-    else:
-        mp3_path = ''
-        mp3_path_public = ''
-        duration = ''
+        return 1  # если уже есть в таблице
+    try:
+        if not os.path.exists(f'{current_media_path}\\{cr_name}\\'):
+            os.mkdir(f'{current_media_path}\\{cr_name}\\')
+        globpath = folderpath + r'\*\*'
+        filepaths = glob.glob(globpath)
+        mp3_path = f'{current_media_path}\\{cr_name}\\{foldername}.mp3'
+        mp3_path_public = f'\\{cr_name}\\{foldername}.mp3'
+        duration = concat_audio_by_time(filepaths, mp3_path)
+    except Exception:
+        traceback.print_exc()
+        return 3  # если не удалось сконвертировать
+    if duration == 'empty':
+        return 2
     sqldate = date.split('-')
     sqldate = sqldate[2] + '-' + sqldate[1] + '-' + sqldate[0]
     res = sqlite.add_courthearing(foldername=foldername, case=case, date=date, courtroomname=cr_name,
@@ -115,7 +112,7 @@ def gather_from_courtroom(cr_name, settings, new_folder_path=None):
     if res == 0:
         return 0
     else:
-        return 3
+        return res
 
 
 def gather_path(emitter, new_folder_path):
@@ -127,14 +124,11 @@ def gather_path(emitter, new_folder_path):
     settings = sqlite.get_settings()
     for name, path in cr_dict.items():
         if os.path.dirname(new_folder_path) == path:
-            emitter.emit(f'Найдена новая запись {os.path.basename(new_folder_path)} в {name}')
+            emitter.emit(f'{ctime()} - Обрабатывается новая запись {os.path.basename(new_folder_path)} в {name}')
             res = gather_from_courtroom(name, settings, new_folder_path)
-            if res > 0:
-                emitter.emit('НЕ добавлен ' + os.path.basename(new_folder_path))
-            else:
-                emitter.emit('Добавлен ' + os.path.basename(new_folder_path))
     sqlite.db.commit()
     emitter.emit(f'{ctime()} - Сбор завершен')
+    return res
 
 
 def concat_audio_by_time(audio_filepaths, outmp3, normalize_volume=False):
@@ -145,11 +139,12 @@ def concat_audio_by_time(audio_filepaths, outmp3, normalize_volume=False):
     :param audio_filepaths: glob from audiopath
     :return: dict{time:audiosegment}
     """
+    s_time = time.time()
     audio_filepaths = [i for i in audio_filepaths if i.endswith('.WAV')]
     print('files for concat: ', audio_filepaths)
     if not audio_filepaths:
         print('empty folder, cant create mp3')
-        return ''
+        return 'empty'
     print('saving to: ', outmp3)
     audio_filepaths_by_time = {}
     tempfile_list_for_delete = []
@@ -192,7 +187,7 @@ def concat_audio_by_time(audio_filepaths, outmp3, normalize_volume=False):
         print('mp3 check fail')
         return ''
     else:
-        print('mp3 checked successfully')
+        print('mp3 checked successfully, converted in ', time.time()-s_time, ' сек.')
     return duration
 
 
