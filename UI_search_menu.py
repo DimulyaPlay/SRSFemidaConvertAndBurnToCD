@@ -1,5 +1,4 @@
 import traceback
-
 from PyQt5 import QtCore, QtWidgets, uic
 from Utils import *
 from UI_write_to_cd_progress_bar import ProgressWindow
@@ -115,30 +114,22 @@ class FileWidget(QtWidgets.QWidget):
         self.label_date.setFixedWidth(80)
         self.label_date.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
         layout.addWidget(self.label_date)
-
         self.label_duration = QtWidgets.QLabel(mp3duration)
         self.label_duration.setFixedWidth(80)
         self.label_duration.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
         layout.addWidget(self.label_duration)
-
         self.check_box = QtWidgets.QCheckBox()
         self.check_box.setFixedWidth(20)
         self.check_box.setChecked(mp3path in self.cases_to_burn)
         self.check_box.stateChanged.connect(lambda: self.add_remove(mp3path))
         layout.addWidget(self.check_box)
-
         self.setLayout(layout)
 
     def add_remove(self, mp3path):
         if self.check_box.isChecked():
             self.cases_to_burn.append(mp3path)
-            print('checker')
-            print(self.cases_to_burn)
         else:
             self.cases_to_burn.remove(mp3path)
-            print('unchecker')
-            print(self.cases_to_burn)
-
         self.num_cases.setText(f'Выбрано: {len(self.cases_to_burn)}')
 
 
@@ -165,8 +156,8 @@ class HatWidget(QtWidgets.QWidget):
         self.label_duration.setFixedWidth(80)
         self.label_duration.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
         layout.addWidget(self.label_duration)
-        self.cb = QtWidgets.QLabel(' ')
-        self.cb.setFixedWidth(20)
+        self.cb = QtWidgets.QLabel('')
+        self.cb.setFixedWidth(35)
         self.cb.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
         layout.addWidget(self.cb)
         self.setLayout(layout)

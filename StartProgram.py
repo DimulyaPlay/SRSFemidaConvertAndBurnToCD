@@ -9,7 +9,7 @@ from UI_settings_menu import SettingsMenu
 from UI_search_menu import CasesMenu
 
 # pyinstaller --noconfirm --onedir --console --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/ffmpeg.exe;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/ffprobe.exe;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/readme.txt;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/server_db_path.txt;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/foobar2000;foobar2000/" --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/CDBurnerXP;CDBurnerXP/" --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/assets;assets/"  "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/StartProgram.py"
-
+# C:\Python36\scripts\pyinstaller.exe --noconfirm --onedir --console --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/ffmpeg.exe;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/ffprobe.exe;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/readme.txt;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/server_db_path.txt;." --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/foobar2000;foobar2000/" --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/CDBurnerXP;CDBurnerXP/" --add-data "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/assets;assets/"  "C:/Users/CourtUser/Desktop/release/SRSFemidaConvertAndBurnToCD/StartProgram.py"
 if '-server_mode' in sys.argv:
     admin_mode = True
 else:

@@ -1,5 +1,4 @@
 import traceback
-
 from PyQt5 import QtCore, QtWidgets, uic
 from Utils import *
 from UI_write_to_cd_progress_bar import ProgressWindow
@@ -93,23 +92,19 @@ class FileWidget(QtWidgets.QWidget):
         self.label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         layout.addWidget(self.label)
         layout.addStretch(1)
-
         self.label_date = QtWidgets.QLabel(date)
         self.label_date.setFixedWidth(80)
         self.label_date.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
         layout.addWidget(self.label_date)
-
         self.label_duration = QtWidgets.QLabel(mp3duration)
         self.label_duration.setFixedWidth(80)
         self.label_duration.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
         layout.addWidget(self.label_duration)
-
         self.check_box = QtWidgets.QCheckBox()
         self.check_box.setFixedWidth(20)
         self.check_box.setChecked(mp3path in self.cases_to_burn)
         self.check_box.stateChanged.connect(lambda: self.add_remove(mp3path))
         layout.addWidget(self.check_box)
-
         self.setLayout(layout)
 
     def add_remove(self, mp3path):

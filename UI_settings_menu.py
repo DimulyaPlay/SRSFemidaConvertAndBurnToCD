@@ -19,12 +19,10 @@ class SettingsMenu(QtWidgets.QMainWindow):
         self.courtrooms = sqlite.get_courtrooms_dict()
         self.setWindowTitle("ПАРАМЕТРЫ")
         self.setFixedSize(539, 431)
-        # MAIN TAB WIDGET
         self.tabWidget = QtWidgets.QTabWidget(self)
         self.tabWidget.tabBarClicked.connect(self.apply_settings)
         self.tabWidget.setGeometry(QtCore.QRect(0, 0, 539, 431))
         self.tabWidget.setTabShape(QtWidgets.QTabWidget.Rounded)
-        # CR TAB INIT
         self.crooms_tab = QtWidgets.QWidget()
         self.tabWidget.addTab(self.crooms_tab, "Залы")
         self.addCourtroomButton = QtWidgets.QPushButton(self.crooms_tab, clicked=lambda: self.add_crroom())
@@ -36,20 +34,15 @@ class SettingsMenu(QtWidgets.QMainWindow):
         self.mylist_listWidget = QtWidgets.QListWidget(self.crooms_tab)
         self.mylist_listWidget.setGeometry(QtCore.QRect(10, 50, 511, 351))
         self.cr_name_path_dict = {}
-        # GENERATE LIST OF CR
         for name, path in self.courtrooms.items():
             row = name + '\n' + fr'{path}'
             self.mylist_listWidget.addItem(row)
             self.cr_name_path_dict[row] = name
-        # SCHDLE TAB INIT and text placeholder
-
         self.schedule_tab = QtWidgets.QWidget()
         self.tabWidget.addTab(self.schedule_tab, "Запуск сканирования")
-
         self.spinBox_period = QtWidgets.QSpinBox(self.schedule_tab)
         self.spinBox_period.setGeometry(QtCore.QRect(481, 10, 41, 20))
         self.spinBox_period.setValue(3)
-
         font = QtGui.QFont()
         font.setPointSize(10)
         self.spinBox_period.setFont(font)
@@ -76,8 +69,6 @@ class SettingsMenu(QtWidgets.QMainWindow):
         self.plainTextEdit_logger.setGeometry(QtCore.QRect(10, 190, 511, 211))
         self.plainTextEdit_logger.setReadOnly(True)
         self.plainTextEdit_logger.appendPlainText('SRS Femida НЕВСПИН - Неофициальный вспомогательный инструментарий. \nРазработка: Краснокамский суд ПК, Дмитрий Соснин, 2023. github.com/dimulyaplay')
-
-        # EXTRA TAB INIT
         self.extra_tab = QtWidgets.QWidget()
         self.tabWidget.addTab(self.extra_tab, "Дополнительно")
         self.mp3_save_checkBox = QtWidgets.QCheckBox(self.extra_tab)
@@ -93,7 +84,6 @@ class SettingsMenu(QtWidgets.QMainWindow):
             self.mp3_save_path_server.setPlaceholderText(r"Пример: \\server\audio_db")
         else:
             self.mp3_save_path_server.setText(self.settings['server_media_path'])
-
         label_client = QtWidgets.QLabel(self.extra_tab)
         label_client.setText("Локальная папка для сохранения mp3 сервером")
         label_client.setGeometry(QtCore.QRect(10, 90, 251, 20))
@@ -133,14 +123,11 @@ class SettingsMenu(QtWidgets.QMainWindow):
             if os.path.exists(path):
                 res = self.sqlite.add_courtroom(name, path)
                 if res == 0:
-                    print(f'New courtroom {name, path} added')
                     result_name = 'Успех'
                     result_text = 'Зал был успешно добавлен.'
-
                 else:
                     result_name = 'Неудача'
                     result_text = f'Зал не был добавлен. {errorcode[res]}'
-                    print(f'New courtroom {name, path} not added')
                 popup_msg(result_name, result_text)
                 add_courtroom.close()
                 row = f'{name}\n{path}'
@@ -148,7 +135,6 @@ class SettingsMenu(QtWidgets.QMainWindow):
                 self.cr_name_path_dict[row] = name
             else:
                 QtWidgets.QMessageBox.about(self, 'Ошибка','Указанная директория недоступна')
-                print('Директория недоступна')
 
     def remove_crroom(self):
         qm = QtWidgets.QMessageBox()
@@ -210,7 +196,6 @@ class SettingsMenu(QtWidgets.QMainWindow):
 
 
 class MonitorThread(QThread):
-
     class NewFolderHandler(FileSystemEventHandler):
         def __init__(self, parent=None):
             super().__init__()
@@ -240,7 +225,6 @@ class MonitorThread(QThread):
             observer.join()
         except Exception as e:
             traceback.print_exc()
-            print(e)
 
 
 class Worker(QThread):
@@ -253,16 +237,14 @@ class Worker(QThread):
     add_string_to_log = pyqtSignal(str)
 
     def run(self):
-        self.add_string_to_log.emit(f'{ctime()} - Сканирование запущено')
         while True:
             try:
                 fp = self.queue.get()
                 if fp is None:
                     break
                 try:
-                    self.add_string_to_log.emit(f'{ctime()} - Найдена новая запись {os.path.basename(fp)}, жду {self.period} секунд')
                     time.sleep(self.period)
-                    res = gather_path(self.add_string_to_log, new_folder_path=fp)
+                    res = gather_path(logger = self.add_string_to_log, new_folder_path=fp)
                     if res == 0:
                         self.add_string_to_log.emit('Добавлен ' + os.path.basename(fp))
                     elif res == 1:
@@ -276,8 +258,9 @@ class Worker(QThread):
                     retries = 1
                     while res == 2 and retries < 6:
                         time.sleep(600)
-                        self.add_string_to_log.emit(f'{ctime()} - Найдена новая запись {os.path.basename(fp)}, попытка №{retries}')
-                        res = gather_path(self.add_string_to_log, new_folder_path=fp)
+                        self.add_string_to_log.emit(f'{ctime()} - {os.path.basename(fp)}, попытка №{retries}')
+                        res = gather_path(logger = self.add_string_to_log,new_folder_path=fp)
+                        retries += 1
                 except Exception as e:
                     self.add_string_to_log.emit(f'Ошибка обработки {fp}, {e}')
             except Exception as e:

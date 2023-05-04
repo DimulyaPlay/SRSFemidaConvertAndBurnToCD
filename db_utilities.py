@@ -1,7 +1,7 @@
 import sqlite3
 import pandas as pd
 import datetime
-from errors import *
+from Utils import popup_msg
 
 
 class db_host:
@@ -10,8 +10,7 @@ class db_host:
             self.db = sqlite3.connect(db_filepath, check_same_thread=False)  # disable check safety because only server can write to the DB with one write op at time
             self.cursor = self.db.cursor()
         except:
-            print('Not connected to ', db_filepath)
-            return
+            popup_msg('Ошибка', f'Не удалость соединиться с БД {db_filepath}')
 
     """
     COURTROOMS TABLE SECTION - START
@@ -23,7 +22,7 @@ class db_host:
             self.db.commit()
             return 0
         except Exception as e:
-            print('Не удалось добавить зал, такое имя уже занято', e)
+            popup_msg('Ошибка', f'Не удалось добавить зал. Возможно имя повторяется.')
             return e
 
     def get_courtrooms_dict(self):
@@ -41,7 +40,7 @@ class db_host:
             self.db.commit()
             return 0
         except Exception as e:
-            print('Не удалось удалить зал', e)
+            popup_msg('Ошибка', f'Не удалось удалить зал, {e}')
             return e
 
     """
@@ -87,16 +86,6 @@ class db_host:
         df.sort_values('date', inplace=True, ascending=False)
         df.reset_index(drop=True, inplace=True)
         return df
-
-    def update_courthearing_add_mp3(self, foldername, courtroomname, mp3_path, mp3_duration):
-        try:
-            self.cursor.execute(
-                f"UPDATE Courthearings SET mp3path = '{mp3_path}', mp3duration = '{mp3_duration}' WHERE foldername_cr = '{foldername + '/' + courtroomname}'")
-            self.db.commit()
-            return 0
-        except Exception as e:
-            return e
-
     """
     COURTHEARINGS TABLE SECTION - END
     
