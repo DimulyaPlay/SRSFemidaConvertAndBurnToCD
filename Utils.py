@@ -9,7 +9,6 @@ import eyed3
 from pydub import AudioSegment
 import soundfile as sf
 from db_utilities import *
-from errors import *
 from datetime import datetime
 from PyQt5.QtWidgets import QMessageBox
 current_path = os.getcwd()
@@ -125,7 +124,7 @@ def gather_path(logger, new_folder_path):
     settings = sqlite.get_settings()
     for name, path in cr_dict.items():
         if os.path.dirname(new_folder_path) == path:
-            logger.emit(f'{ctime()} - {name} - Найдена новая запись {os.path.basename(path)}')
+            logger.emit(f'{ctime()} - {name} - Найдена новая запись {os.path.basename(new_folder_path)}')
             res = gather_from_courtroom(name, settings, new_folder_path)
     sqlite.db.commit()
     return res

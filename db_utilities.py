@@ -1,7 +1,7 @@
 import sqlite3
 import pandas as pd
 import datetime
-from Utils import popup_msg
+from Utils import *
 
 
 class db_host:
