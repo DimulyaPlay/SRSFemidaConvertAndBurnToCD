@@ -16,7 +16,7 @@ class SettingsMenu(QtWidgets.QMainWindow):
         self.sqlite = sqlite
         self.settings = sqlite.get_settings()
         self.courtrooms = sqlite.get_courtrooms_dict()
-        self.setWindowTitle("Сервер НЕВСПИН")
+        self.setWindowTitle("Сервер Femida Archive Wizard")
         self.setFixedSize(539, 431)
         self.tabWidget = QtWidgets.QTabWidget(self)
         self.tabWidget.tabBarClicked.connect(self.apply_settings)
@@ -51,7 +51,7 @@ class SettingsMenu(QtWidgets.QMainWindow):
         self.label_period.setFont(font)
         self.label_period.setText("Задержка сканирования, мин")
         self.label_period.setToolTip('Промежуток времени через который начинать обрабатывать папку\n с момента ее обнаружения(фемида не мгновенно '
-                                     'копирует \n все файлы сз на серверЮ необходимо некоторое время,\n чтобы все файлы скопировались в папку и обработались корректно)')
+                                     'копирует \n все файлы сз на сервер. Необходимо некоторое время,\n чтобы все файлы скопировались в папку и обработались корректно)')
         self.pushButton_start = QtWidgets.QPushButton(self.schedule_tab, clicked = lambda:self.start_worker_scan())
         self.pushButton_start.setGeometry(QtCore.QRect(290, 40, 241, 41))
         self.pushButton_start.setFont(font)
@@ -67,7 +67,7 @@ class SettingsMenu(QtWidgets.QMainWindow):
         self.plainTextEdit_logger = QtWidgets.QPlainTextEdit(self.schedule_tab)
         self.plainTextEdit_logger.setGeometry(QtCore.QRect(10, 190, 511, 211))
         self.plainTextEdit_logger.setReadOnly(True)
-        self.plainTextEdit_logger.appendPlainText('SRS Femida НЕВСПИН - Неофициальный вспомогательный инструментарий. \nРазработка: Краснокамский суд ПК, Дмитрий Соснин, 2023. github.com/dimulyaplay')
+        self.plainTextEdit_logger.appendPlainText('SRS Femida Archive Wizard v1.0 \nРазработка: Краснокамский суд ПК, Дмитрий Соснин, 2023. github.com/dimulyaplay')
         label_server = QtWidgets.QLabel(self.schedule_tab)
         label_server.setText("Сетевая папка для чтения mp3 клиентом")
         label_server.setGeometry(QtCore.QRect(10, 40, 251, 20))
@@ -139,7 +139,9 @@ class SettingsMenu(QtWidgets.QMainWindow):
             period = self.spinBox_period.value()*60
             self.monitor_threads = dict()
             self.converter_threads = dict()
+            self.latest_converter_threads = dict()
             self.queues = dict()
+            self.wait_queues = dict()
             self.pushButton_stop.setDisabled(False)
             self.pushButton_start.setDisabled(True)
             self.label_status.setText("Текущий статус: РАБОТАЕТ")
@@ -148,10 +150,15 @@ class SettingsMenu(QtWidgets.QMainWindow):
                 self.monitor_threads[name] = MonitorThread(path, self.queues[name])
                 self.monitor_threads[name].start()
                 self.addLogRow(f'{name} мониторинг запущен.')
-                self.converter_threads[name] = Worker(self.queues[name], period)
+                self.wait_queues[name] = Queue()
+                self.converter_threads[name] = Worker(self.queues[name], self.wait_queues[name], period)
                 self.converter_threads[name].add_string_to_log.connect(self.addLogRow)
                 self.converter_threads[name].start()
                 self.addLogRow(f'{name} конвертер запущен.')
+                self.latest_converter_threads[name] = WorkerWaiter(self.wait_queues[name], self.queues[name])
+                self.latest_converter_threads[name].add_string_to_log.connect(self.addLogRow)
+                self.latest_converter_threads[name].start()
+                self.addLogRow(f'{name} сервис передержки запущен.')
         except:
             traceback.print_exc()
             raise
@@ -204,10 +211,11 @@ class MonitorThread(QThread):
 
 
 class Worker(QThread):
-    def __init__(self, queue, period):
+    def __init__(self, queue, waiter_queue, period):
         super().__init__()
         self._Running = True
         self.queue = queue
+        self.waiter_queue = waiter_queue
         self.period = period
 
     add_string_to_log = pyqtSignal(str)
@@ -217,6 +225,7 @@ class Worker(QThread):
             try:
                 fp = self.queue.get()
                 if fp is None:
+                    self.waiter_queue.put(None)
                     break
                 try:
                     time.sleep(self.period)
@@ -227,17 +236,38 @@ class Worker(QThread):
                         self.add_string_to_log.emit('НЕ добавлен ' + os.path.basename(fp) + ', путь уже существует')
                     elif res == 2:
                         self.add_string_to_log.emit('НЕ добавлен ' + os.path.basename(fp) + ', отсутствуют файлы в папке')
+                        self.add_string_to_log.emit('Отправлен на передержку на 4 часа')
+                        self.waiter_queue.put(fp, time.time())
                     elif res == 3:
                         self.add_string_to_log.emit('НЕ добавлен ' + os.path.basename(fp) + ', ошибка конвертации')
                     else:
                         self.add_string_to_log.emit('НЕ добавлен ' + os.path.basename(fp) + ', ошибка sql')
-                    retries = 1
-                    while res == 2 and retries < 6:
-                        time.sleep(600)
-                        self.add_string_to_log.emit(f'{ctime()} - {os.path.basename(fp)}, попытка №{retries}')
-                        res = gather_path(logger = self.add_string_to_log,new_folder_path=fp)
-                        retries += 1
                 except Exception as e:
                     self.add_string_to_log.emit(f'Ошибка обработки {fp}, {e}')
+            except Exception as e:
+                self.add_string_to_log.emit(f'Ошибка обработки, {e}')
+
+
+class WorkerWaiter(QThread):
+    def __init__(self, wait_queue, main_queue):
+        super().__init__()
+        self._Running = True
+        self.wait_queue = wait_queue
+        self.main_queue = main_queue
+
+    add_string_to_log = pyqtSignal(str)
+
+    def run(self):
+        while True:
+            try:
+                fp, start_time = self.wait_queue.get()
+                if fp is None:
+                    break
+                current_time = time.time()
+                if current_time - start_time >= 4 * 3600:
+                    self.main_queue.put((fp, start_time))
+                else:
+                    self.wait_queue.put((fp, start_time))
+                time.sleep(5)
             except Exception as e:
                 self.add_string_to_log.emit(f'Ошибка обработки, {e}')
