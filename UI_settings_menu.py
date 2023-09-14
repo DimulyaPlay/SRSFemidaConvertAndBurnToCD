@@ -11,13 +11,12 @@ from queue import Queue
 
 
 class SettingsMenu(QtWidgets.QMainWindow):
-    def __init__(self, root, sqlite):
-        super(SettingsMenu, self).__init__(parent=root)
-        self.root = root
+    def __init__(self, sqlite):
+        super(SettingsMenu, self).__init__()
         self.sqlite = sqlite
         self.settings = sqlite.get_settings()
         self.courtrooms = sqlite.get_courtrooms_dict()
-        self.setWindowTitle("ПАРАМЕТРЫ")
+        self.setWindowTitle("Сервер НЕВСПИН")
         self.setFixedSize(539, 431)
         self.tabWidget = QtWidgets.QTabWidget(self)
         self.tabWidget.tabBarClicked.connect(self.apply_settings)
@@ -69,36 +68,15 @@ class SettingsMenu(QtWidgets.QMainWindow):
         self.plainTextEdit_logger.setGeometry(QtCore.QRect(10, 190, 511, 211))
         self.plainTextEdit_logger.setReadOnly(True)
         self.plainTextEdit_logger.appendPlainText('SRS Femida НЕВСПИН - Неофициальный вспомогательный инструментарий. \nРазработка: Краснокамский суд ПК, Дмитрий Соснин, 2023. github.com/dimulyaplay')
-        self.extra_tab = QtWidgets.QWidget()
-        self.tabWidget.addTab(self.extra_tab, "Дополнительно")
-        self.mp3_save_checkBox = QtWidgets.QCheckBox(self.extra_tab)
-        self.mp3_save_checkBox.setGeometry(QtCore.QRect(10, 10, 231, 21))
-        self.mp3_save_checkBox.setText("Конвертировать в MP3 при сборе записей")
-        self.mp3_save_checkBox.setChecked(bool(int(self.settings['audio_convert'])))
-        label_server = QtWidgets.QLabel(self.extra_tab)
+        label_server = QtWidgets.QLabel(self.schedule_tab)
         label_server.setText("Сетевая папка для чтения mp3 клиентом")
         label_server.setGeometry(QtCore.QRect(10, 40, 251, 20))
-        self.mp3_save_path_server = QtWidgets.QLineEdit(self.extra_tab)
+        self.mp3_save_path_server = QtWidgets.QLineEdit(self.schedule_tab)
         self.mp3_save_path_server.setGeometry(QtCore.QRect(10, 60, 251, 20))
         if self.settings['server_media_path'] == '':
             self.mp3_save_path_server.setPlaceholderText(r"Пример: \\server\audio_db")
         else:
             self.mp3_save_path_server.setText(self.settings['server_media_path'])
-        label_client = QtWidgets.QLabel(self.extra_tab)
-        label_client.setText("Локальная папка для сохранения mp3 сервером")
-        label_client.setGeometry(QtCore.QRect(10, 90, 251, 20))
-        self.mp3_save_path_client = QtWidgets.QLineEdit(self.extra_tab)
-        self.mp3_save_path_client.setGeometry(QtCore.QRect(10, 110, 251, 20))
-        if self.settings['client_media_path'] == '':
-            self.mp3_save_path_client.setPlaceholderText(r"Пример: C:\\femida_MP3_archive\audio_db")
-        else:
-            self.mp3_save_path_client.setText(self.settings['client_media_path'])
-
-    def closeEvent(self, event):
-        self.apply_settings()
-        self.hide()
-        self.root.show()
-        event.ignore()
 
     def add_crroom(self):
         add_courtroom = QtWidgets.QDialog(parent=self)
@@ -153,9 +131,7 @@ class SettingsMenu(QtWidgets.QMainWindow):
             return
 
     def apply_settings(self):
-        self.settings['audio_convert'] = int(self.mp3_save_checkBox.isChecked())
         self.settings['server_media_path'] = self.mp3_save_path_server.text()
-        self.settings['client_media_path'] = self.mp3_save_path_client.text()
         sqlite.update_settings(self.settings)
 
     def start_worker_scan(self):
