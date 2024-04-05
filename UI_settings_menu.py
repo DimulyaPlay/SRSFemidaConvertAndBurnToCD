@@ -69,7 +69,7 @@ class SettingsMenu(QtWidgets.QMainWindow):
         self.plainTextEdit_logger.setReadOnly(True)
         self.plainTextEdit_logger.appendPlainText('SRS Femida Archive Wizard v1.0 \nРазработка: Краснокамский суд ПК, Дмитрий Соснин, 2023. github.com/dimulyaplay')
         label_server = QtWidgets.QLabel(self.schedule_tab)
-        label_server.setText("Сетевая папка для чтения mp3 клиентом")
+        label_server.setText("Сетевая папка для чтения и записи mp3")
         label_server.setGeometry(QtCore.QRect(10, 40, 251, 20))
         self.mp3_save_path_server = QtWidgets.QLineEdit(self.schedule_tab)
         self.mp3_save_path_server.setGeometry(QtCore.QRect(10, 60, 251, 20))
@@ -225,7 +225,7 @@ class Worker(QThread):
             try:
                 fp = self.queue.get()
                 if fp is None:
-                    self.waiter_queue.put(None)
+                    self.waiter_queue.put((None, None))
                     break
                 try:
                     time.sleep(self.period)
@@ -234,18 +234,28 @@ class Worker(QThread):
                         self.add_string_to_log.emit('Добавлен ' + os.path.basename(fp))
                     elif res == 1:
                         self.add_string_to_log.emit('НЕ добавлен ' + os.path.basename(fp) + ', путь уже существует')
+                        self.add_string_to_log.emit('Отправлен на передержку на 4 часа')
+                        self.waiter_queue.put((fp, time.time()))
                     elif res == 2:
                         self.add_string_to_log.emit('НЕ добавлен ' + os.path.basename(fp) + ', отсутствуют файлы в папке')
                         self.add_string_to_log.emit('Отправлен на передержку на 4 часа')
-                        self.waiter_queue.put(fp, time.time())
+                        self.waiter_queue.put((fp, time.time()))
                     elif res == 3:
                         self.add_string_to_log.emit('НЕ добавлен ' + os.path.basename(fp) + ', ошибка конвертации')
+                        self.add_string_to_log.emit('Отправлен на передержку на 4 часа')
+                        self.waiter_queue.put((fp, time.time()))
                     else:
                         self.add_string_to_log.emit('НЕ добавлен ' + os.path.basename(fp) + ', ошибка sql')
+                        self.add_string_to_log.emit('Отправлен на передержку на 4 часа')
+                        self.waiter_queue.put((fp, time.time()))
                 except Exception as e:
                     self.add_string_to_log.emit(f'Ошибка обработки {fp}, {e}')
+                    self.add_string_to_log.emit('Отправлен на передержку на 4 часа')
+                    self.waiter_queue.put((fp, time.time()))
             except Exception as e:
                 self.add_string_to_log.emit(f'Ошибка обработки, {e}')
+                self.add_string_to_log.emit('Отправлен на передержку на 4 часа')
+                self.waiter_queue.put((fp, time.time()))
 
 
 class WorkerWaiter(QThread):
@@ -265,9 +275,10 @@ class WorkerWaiter(QThread):
                     break
                 current_time = time.time()
                 if current_time - start_time >= 4 * 3600:
-                    self.main_queue.put((fp, start_time))
+                    self.main_queue.put(fp)
                 else:
                     self.wait_queue.put((fp, start_time))
-                time.sleep(5)
+                time.sleep(180)
             except Exception as e:
+                traceback.print_exc()
                 self.add_string_to_log.emit(f'Ошибка обработки, {e}')

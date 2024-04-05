@@ -80,7 +80,7 @@ class MainUi(QtWidgets.QMainWindow):
             date = row['date'].strftime('%d-%m-%Y')
             cr = row['courtroomname']
             if row["mp3duration"] != '':
-                duration_text = str(int(int(row["mp3duration"]) / 60))
+                duration_text = seconds_to_hh_mm_ss(int(row["mp3duration"]))
                 mp3path = settings['server_media_path'] + row['mp3path']
             else:
                 duration_text = 'нет mp3'

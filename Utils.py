@@ -71,6 +71,13 @@ def get_drive_labels():
     return drive_labels
 
 
+def seconds_to_hh_mm_ss(seconds):
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    remaining_seconds = seconds % 60
+    return f'{hours:02d}:{minutes:02d}:{remaining_seconds:02d}'
+
+
 def open_mp3(mp3path):
     if mp3path:
         subprocess.Popen(mp3player + ' ' + fr'"{mp3path}"', shell=False)
@@ -127,11 +134,11 @@ def gather_from_courtroom(cr_name, settings, new_folder_path=None):
     :param cr_name: courtroomname
     :return:
     """
-    if not sqlite.is_courhearing_in_table(os.path.basename(new_folder_path)+'/'+cr_name):
+    if sqlite.is_courhearing_in_table(os.path.basename(new_folder_path)+'/'+cr_name):
+        return 1  # если уже есть в таблице
+    else:
         foldername, folderpath = os.path.basename(new_folder_path), new_folder_path
         case, date = get_case_date_from_name(foldername)
-    else:
-        return 1  # если уже есть в таблице
     try:
         if not os.path.exists(f'{current_media_path}\\{cr_name}\\'):
             os.mkdir(f'{current_media_path}\\{cr_name}\\')
@@ -143,17 +150,16 @@ def gather_from_courtroom(cr_name, settings, new_folder_path=None):
     except Exception:
         traceback.print_exc()
         return 3  # если не удалось сконвертировать
-    if duration == 'empty':
+    if str(duration) == 'empty':
         return 2
+    if str(duration).startswith('error'):
+        return 3
     sqldate = date.split('-')
     sqldate = sqldate[2] + '-' + sqldate[1] + '-' + sqldate[0]
     res = sqlite.add_courthearing(foldername=foldername, case=case, date=date, courtroomname=cr_name,
                                   mp3_path=mp3_path_public,
                                   mp3_duration=duration, sqldate=sqldate, many=True)
-    if res == 0:
-        return 0
-    else:
-        return res
+    return res
 
 
 def gather_path(logger, new_folder_path):
@@ -203,7 +209,7 @@ def concat_audio_by_time(audio_filepaths, outmp3, normalize_volume=False):
                 audio_filepaths_by_time[audio_time_suffix] = sound1
         except Exception:
             traceback.print_exc()
-            return ''
+            return 'error1'
     try:
         out_sound = None
         for key, value in dict(sorted(audio_filepaths_by_time.items())).items():
@@ -217,13 +223,19 @@ def concat_audio_by_time(audio_filepaths, outmp3, normalize_volume=False):
             os.unlink(tf)
     except Exception:
         traceback.print_exc()
-        return ''
+        return 'error2'
     checkfile = eyed3.load(outmp3)
     if checkfile is None:
         print('mp3 check fail')
-        return ''
+        return 'error3'
     else:
         print('mp3 checked successfully, converted in ', time.time()-s_time, ' сек.')
+    if duration == 0:
+        print('PROBLEM WITH THESE FILES:')
+        print('----------------------------------')
+        print(audio_filepaths)
+        print('----------------------------------')
+        return 'error1'
     return duration
 
 
